@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type Message = {
@@ -8,7 +8,7 @@ type Message = {
   text: string;
 };
 
-export default function DebatePage() {
+function DebateContent() {
   const searchParams = useSearchParams();
 
   const topic =
@@ -25,49 +25,49 @@ export default function DebatePage() {
     },
   ]);
 
-async function sendMessage() {
-  if (input.trim() === "") return;
+  async function sendMessage() {
+    if (input.trim() === "") return;
 
-  const userMessage: Message = {
-    speaker: "You",
-    text: input,
-  };
-
-  const updatedMessages = [...messages, userMessage];
-
-  setMessages(updatedMessages);
-  setInput("");
-
-  try {
-    const response = await fetch("/api/debate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        topic,
-        side,
-        messages: updatedMessages,
-      }),
-    });
-
-    const data = await response.json();
-
-    const aiMessage: Message = {
-      speaker: "AI Opponent",
-      text: data.reply || data.error || "The AI route responded, but gave no reply.",
+    const userMessage: Message = {
+      speaker: "You",
+      text: input,
     };
 
-    setMessages([...updatedMessages, aiMessage]);
-  } catch (error) {
-    const errorMessage: Message = {
-      speaker: "AI Opponent",
-      text: "Could not reach /api/debate. Check route.ts and the PowerShell terminal.",
-    };
+    const updatedMessages = [...messages, userMessage];
 
-    setMessages([...updatedMessages, errorMessage]);
+    setMessages(updatedMessages);
+    setInput("");
+
+    try {
+      const response = await fetch("/api/debate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          topic,
+          side,
+          messages: updatedMessages,
+        }),
+      });
+
+      const data = await response.json();
+
+      const aiMessage: Message = {
+        speaker: "AI Opponent",
+        text: data.reply || "Something went wrong.",
+      };
+
+      setMessages([...updatedMessages, aiMessage]);
+    } catch {
+      const errorMessage: Message = {
+        speaker: "AI Opponent",
+        text: "Could not reach /api/debate.",
+      };
+
+      setMessages([...updatedMessages, errorMessage]);
+    }
   }
-}
 
   return (
     <main className="min-h-screen bg-black text-white p-6">
@@ -108,21 +108,29 @@ async function sendMessage() {
         />
 
         <button
-  onClick={sendMessage}
-  className="bg-white text-black px-6 py-3 rounded-xl font-bold"
->
-  Send
-</button>
+          onClick={sendMessage}
+          className="bg-white text-black px-6 py-3 rounded-xl font-bold"
+        >
+          Send
+        </button>
 
-<button
-  onClick={() => {
-    window.location.href = "/results";
-  }}
-  className="ml-4 bg-gray-800 text-white px-6 py-3 rounded-xl font-bold"
->
-  End Debate
-</button>
+        <button
+          onClick={() => {
+            window.location.href = "/results";
+          }}
+          className="ml-4 bg-gray-800 text-white px-6 py-3 rounded-xl font-bold"
+        >
+          End Debate
+        </button>
       </div>
     </main>
+  );
+}
+
+export default function DebatePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-black text-white p-6">Loading debate...</div>}>
+      <DebateContent />
+    </Suspense>
   );
 }
