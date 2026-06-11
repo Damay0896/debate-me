@@ -271,6 +271,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
       : hadCachedAnalysis
         ? "Saved coaching report"
         : "Instant scoring report";
+  const activeSession = session;
   const winnerLabel =
     report.winner === "You"
       ? "User"
@@ -301,9 +302,9 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   function continueDebate() {
     startTransition(() => {
       router.push(
-        `/debate?session=${session.id}&topic=${encodeURIComponent(
-          session.topic,
-        )}&side=${session.userSide}&personality=${session.opponentPersonality}&style=${session.replyStyle}`,
+        `/debate?session=${activeSession.id}&topic=${encodeURIComponent(
+          activeSession.topic,
+        )}&side=${activeSession.userSide}&personality=${activeSession.opponentPersonality}&style=${activeSession.replyStyle}`,
       );
     });
   }
@@ -312,8 +313,8 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     startTransition(() => {
       router.push(
         `/debate?session=${createId("session")}&topic=${encodeURIComponent(
-          session.topic,
-        )}&side=${session.userSide}&personality=${session.opponentPersonality}&style=${session.replyStyle}&focus=${encodeURIComponent(report.replayFocus)}`,
+          activeSession.topic,
+        )}&side=${activeSession.userSide}&personality=${activeSession.opponentPersonality}&style=${activeSession.replyStyle}&focus=${encodeURIComponent(report.replayFocus)}`,
       );
     });
   }
