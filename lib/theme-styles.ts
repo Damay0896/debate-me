@@ -1,5 +1,4 @@
-@import "tailwindcss";
-
+export const THEME_STYLE_BLOCK = `
 :root {
   --background: #090909;
   --page-background:
@@ -107,22 +106,6 @@ html[data-theme="light"] {
   --map-assumption-stroke: #8f74de;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-card: var(--card);
-  --color-border: var(--border);
-  --color-accent: var(--accent);
-  --color-accent-strong: var(--accent-strong);
-  --font-sans: "Aptos", "Segoe UI", sans-serif;
-  --font-mono: "Consolas", "SFMono-Regular", monospace;
-}
-
-* {
-  box-sizing: border-box;
-}
-
 html {
   background-color: var(--background);
   color-scheme: dark;
@@ -131,7 +114,6 @@ html {
 body {
   background: var(--page-background);
   color: var(--foreground);
-  font-family: "Aptos", "Segoe UI", sans-serif;
   transition:
     background 180ms ease,
     color 180ms ease;
@@ -140,12 +122,6 @@ body {
 ::selection {
   background: var(--selection);
   color: var(--foreground);
-}
-
-a,
-button,
-textarea {
-  -webkit-tap-highlight-color: transparent;
 }
 
 html[data-theme="light"] {
@@ -378,100 +354,4 @@ html[data-theme="light"] .theme-accent-chip {
   background: var(--surface-soft);
   border-color: var(--border);
 }
-
-@keyframes report-rise-in {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes report-glow-drift {
-  0% {
-    opacity: 0.72;
-    transform: translate3d(-4%, -6%, 0) scale(1);
-  }
-
-  50% {
-    opacity: 0.95;
-    transform: translate3d(5%, 4%, 0) scale(1.04);
-  }
-
-  100% {
-    opacity: 0.8;
-    transform: translate3d(-1%, 1%, 0) scale(1.01);
-  }
-}
-
-.report-rise {
-  animation: report-rise-in 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-
-.report-hero {
-  isolation: isolate;
-  background:
-    radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 18%, transparent), transparent 34%),
-    linear-gradient(160deg, color-mix(in srgb, var(--card) 86%, white 4%), var(--panel));
-  box-shadow:
-    0 36px 100px var(--shadow-strong),
-    inset 0 1px 0 color-mix(in srgb, var(--foreground) 8%, transparent);
-}
-
-.report-hero::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--foreground) 7%, transparent),
-      transparent 28%,
-      transparent 72%,
-      color-mix(in srgb, var(--accent) 10%, transparent)
-    );
-  opacity: 0.7;
-  z-index: -1;
-}
-
-.report-hero-glow {
-  background:
-    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--accent) 28%, transparent), transparent 42%),
-    radial-gradient(circle at 82% 0%, color-mix(in srgb, var(--foreground) 12%, transparent), transparent 34%);
-  filter: blur(18px);
-  pointer-events: none;
-  animation: report-glow-drift 8s ease-in-out infinite alternate;
-}
-
-.report-hero .theme-pill,
-.report-rise .theme-pill {
-  backdrop-filter: blur(10px);
-}
-
-.report-rise:hover,
-.report-hero:hover {
-  transform: translateY(-2px);
-  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
-}
-
-.report-rise:hover {
-  box-shadow: 0 30px 88px var(--shadow-strong);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .report-rise,
-  .report-hero-glow {
-    animation: none;
-  }
-
-  .report-rise:hover,
-  .report-hero:hover {
-    transform: none;
-  }
-}
+`;

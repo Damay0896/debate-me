@@ -1,59 +1,67 @@
+import {
+  buildDebateSystemPrompt,
+  buildFallbackOpponentReply,
+  coerceDebateSession,
+  getReplyStyleMeta,
+  sessionToTranscript,
+} from "@/lib/debate";
+import { requestOpenRouter } from "@/lib/openrouter";
+
 export async function POST(request: Request) {
   try {
-    if (!process.env.OPENROUTER_API_KEY) {
-      return Response.json({
-        reply: "Missing OPENROUTER_API_KEY in .env.local.",
-      });
+    const body = (await request.json()) as { session?: unknown };
+    const session = coerceDebateSession(body.session);
+
+    if (!session) {
+      return Response.json(
+        {
+          reply: "I could not read that debate turn. Try sending it again.",
+        },
+        { status: 400 },
+      );
     }
 
-    const body = await request.json();
-    const { topic, side, messages } = body;
+    const fallbackReply = buildFallbackOpponentReply(session);
 
-    const transcript = messages
-      .map((message: { speaker: string; text: string }) => {
-        return `${message.speaker}: ${message.text}`;
-      })
-      .join("\n");
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openrouter/free",
-        messages: [
+    try {
+      const replyStyle = getReplyStyleMeta(session.replyStyle);
+      const response = await requestOpenRouter(
+        [
           {
             role: "system",
-            content: `You are Debate Me, a sharp but fair AI debate opponent. The user is arguing the ${side} side of this topic: "${topic}". You must argue the opposite side. Keep responses under 120 words. Challenge evidence, logic, assumptions, or ask a pointed follow-up question. Do not say "good point." Do not simply agree.`,
+            content: buildDebateSystemPrompt(session),
           },
           {
             role: "user",
-            content: transcript,
+            content: sessionToTranscript(session),
           },
         ],
-      }),
-    });
+        {
+          maxTokens: replyStyle.maxTokens,
+          temperature: 0.8,
+        },
+      );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return Response.json({
-        reply: data?.error?.message || "OpenRouter request failed.",
-      });
+      if (response) {
+        return Response.json({
+          reply: response,
+        });
+      }
+    } catch (error) {
+      console.error("OpenRouter debate response failed.", error);
     }
 
     return Response.json({
-      reply:
-        data?.choices?.[0]?.message?.content ||
-        "No response from OpenRouter.",
+      reply: fallbackReply,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Debate route failed.", error);
 
-    return Response.json({
-      reply: "OpenRouter failed. Check PowerShell.",
-    });
+    return Response.json(
+      {
+        reply: "I lost the thread for a moment. Restate your claim in one sharp sentence.",
+      },
+      { status: 500 },
+    );
   }
 }
