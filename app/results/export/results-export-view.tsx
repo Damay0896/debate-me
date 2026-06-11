@@ -1,0 +1,370 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+
+import {
+  buildHeuristicAnalysis,
+  coerceDebateAnalysis,
+  getOpponentPersonalityMeta,
+  getReplyStyleMeta,
+  type DebateSession,
+} from "@/lib/debate";
+import {
+  loadActiveSession,
+  loadAnalysis,
+  loadSession,
+} from "@/lib/debate-storage";
+
+type ResultsExportViewProps = {
+  autoPrint: boolean;
+  initialSessionId: string;
+};
+
+function getStoredSession(initialSessionId: string) {
+  return (
+    (initialSessionId.trim() !== "" ? loadSession(initialSessionId) : null) ??
+    loadActiveSession()
+  );
+}
+
+function subscribeToHydration() {
+  return () => {};
+}
+
+function useIsClient() {
+  return useSyncExternalStore(subscribeToHydration, () => true, () => false);
+}
+
+function getFallbackAnalysis(session: DebateSession) {
+  return buildHeuristicAnalysis(session);
+}
+
+function getDisplayWinnerLabel(winner: string) {
+  if (winner === "You") {
+    return "User";
+  }
+
+  return winner;
+}
+
+function cleanReplayFocus(value: string) {
+  return value.replace(/^Replay focus:\s*/i, "").trim();
+}
+
+export default function ResultsExportView({
+  autoPrint,
+  initialSessionId,
+}: ResultsExportViewProps) {
+  const isClient = useIsClient();
+  const hasPrintedRef = useRef(false);
+  const session = useMemo(
+    () => (isClient ? getStoredSession(initialSessionId) : null),
+    [initialSessionId, isClient],
+  );
+
+  const report = useMemo(() => {
+    if (!session) {
+      return null;
+    }
+
+    const fallbackAnalysis = getFallbackAnalysis(session);
+    return coerceDebateAnalysis(loadAnalysis(session.id), fallbackAnalysis);
+  }, [session]);
+
+  useEffect(() => {
+    document.body.classList.add("export-mode");
+
+    return () => {
+      document.body.classList.remove("export-mode");
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!autoPrint || hasPrintedRef.current || !report) {
+      return;
+    }
+
+    hasPrintedRef.current = true;
+
+    const timer = window.setTimeout(() => {
+      window.print();
+    }, 320);
+
+    return () => window.clearTimeout(timer);
+  }, [autoPrint, report]);
+
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    document.title = `${session.topic} - Debate Me Feedback Export`;
+  }, [session]);
+
+  if (!isClient) {
+    return null;
+  }
+
+  if (!session || !report) {
+    return (
+      <main className="export-page min-h-screen px-4 py-8">
+        <div className="export-sheet mx-auto max-w-[8.27in] rounded-[1.5rem] p-8">
+          <h1 className="text-3xl font-semibold">No saved feedback found</h1>
+          <p className="mt-4 text-base leading-7 text-slate-700">
+            Open a debate report first, then export the feedback from there.
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex rounded-full border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-900"
+          >
+            Back home
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const opponentPersonality = getOpponentPersonalityMeta(session.opponentPersonality);
+  const replyStyle = getReplyStyleMeta(session.replyStyle);
+  const winnerLabel = getDisplayWinnerLabel(report.winner);
+  const replayFocus = cleanReplayFocus(report.replayFocus);
+
+  return (
+    <main className="export-page min-h-screen px-4 py-8">
+      <div className="export-actions mx-auto mb-4 flex max-w-[8.27in] flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="inline-flex rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900"
+        >
+          Print / Save as PDF
+        </button>
+        <Link
+          href={`/results?session=${session.id}`}
+          className="inline-flex rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900"
+        >
+          Back to report
+        </Link>
+      </div>
+
+      <article className="export-sheet mx-auto max-w-[8.27in] rounded-[1.5rem] p-8 md:p-10">
+        <header className="export-header border-b border-slate-200 pb-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-amber-700">
+                Debate Me Feedback Export
+              </p>
+              <h1 className="mt-3 text-3xl font-semibold leading-tight text-slate-950 md:text-4xl">
+                {session.topic}
+              </h1>
+              <p className="mt-4 text-sm leading-6 text-slate-600">
+                {session.userSide} vs {session.opponentSide} • {opponentPersonality.label} mode •{" "}
+                {replyStyle.label} replies
+              </p>
+            </div>
+
+            <div className="export-score-box rounded-[1.2rem] border border-slate-200 px-5 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                Overall score
+              </p>
+              <p className="mt-2 text-4xl font-semibold text-slate-950">{report.score}</p>
+            </div>
+          </div>
+        </header>
+
+        <section className="export-section mt-8 grid gap-5 md:grid-cols-[1.1fr_0.9fr]">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Verdict
+            </p>
+            <div className="mt-4 flex flex-wrap items-end gap-3">
+              <span className="export-verdict-pill rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em]">
+                {report.result}
+              </span>
+              <div>
+                <p className="text-sm font-medium text-slate-500">
+                  Winner: {winnerLabel} ({report.winnerConfidence}%)
+                </p>
+                <h2 className="mt-1 text-2xl font-semibold text-slate-950">
+                  {report.verdict}
+                </h2>
+              </div>
+            </div>
+            <p className="mt-4 text-sm leading-7 text-slate-700">
+              {report.winnerReasoning}
+            </p>
+          </div>
+
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Best next improvement
+            </p>
+            <h2 className="mt-3 text-xl font-semibold text-slate-950">
+              {report.bestNextImprovement.title}
+            </h2>
+            <p className="mt-3 text-sm leading-7 text-slate-700">
+              {report.bestNextImprovement.reason}
+            </p>
+            <div className="mt-4 rounded-[1rem] bg-slate-50 px-4 py-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+                Replay focus
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-800">{replayFocus}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="export-section mt-8">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Summary
+            </p>
+            <p className="mt-4 text-base leading-8 text-slate-800">{report.summary}</p>
+          </div>
+        </section>
+
+        <section className="export-section mt-8 grid gap-5 md:grid-cols-2">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Strongest argument
+            </p>
+            <p className="mt-4 text-sm leading-7 text-slate-800">{report.strongestArgument}</p>
+          </div>
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Flip sentence
+            </p>
+            <p className="mt-4 text-sm leading-7 text-slate-800">{report.flipSentence}</p>
+          </div>
+        </section>
+
+        <section className="export-section mt-8 grid gap-5 md:grid-cols-2">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Your biggest mistake
+            </p>
+            <p className="mt-4 text-sm leading-7 text-slate-800">{report.biggestUserMistake}</p>
+          </div>
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              AI opponent mistake
+            </p>
+            <p className="mt-4 text-sm leading-7 text-slate-800">
+              {report.biggestOpponentMistake}
+            </p>
+          </div>
+        </section>
+
+        <section className="export-section mt-8">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+                  Skill breakdown
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">
+                  Seven-skill scorecard
+                </h2>
+              </div>
+            </div>
+
+            <div className="mt-5 overflow-hidden rounded-[1rem] border border-slate-200">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 text-left text-xs uppercase tracking-[0.18em] text-slate-500">
+                    <th className="px-4 py-3 font-semibold">Skill</th>
+                    <th className="px-4 py-3 font-semibold">Score</th>
+                    <th className="px-4 py-3 font-semibold">Coach note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {report.metrics.map((metric) => (
+                    <tr key={metric.key} className="border-t border-slate-200 align-top">
+                      <td className="px-4 py-4 text-sm font-semibold text-slate-900">
+                        {metric.label}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-semibold text-slate-900">
+                        {metric.score}
+                      </td>
+                      <td className="px-4 py-4 text-sm leading-6 text-slate-700">
+                        {metric.note}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section className="export-section mt-8 grid gap-5 md:grid-cols-2">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Coach feedback
+            </p>
+            <div className="mt-4 space-y-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-950">Keep doing this</p>
+                <ul className="export-list mt-2 space-y-2">
+                  {report.strengths.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-950">Still leaking here</p>
+                <ul className="export-list mt-2 space-y-2">
+                  {report.weaknesses.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Next round plan
+            </p>
+            <ol className="mt-4 space-y-3">
+              {report.nextSteps.map((item, index) => (
+                <li key={item} className="export-plan-row">
+                  <div className="export-plan-index">{index + 1}</div>
+                  <p className="text-sm leading-6 text-slate-800">{item}</p>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </section>
+
+        <section className="export-section mt-8">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Pressure test
+            </p>
+            <div className="mt-5 grid gap-4">
+              {report.collapsePoints.map((point, index) => (
+                <article key={`${point.title}-${index}`} className="rounded-[1rem] border border-slate-200 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="export-plan-index">{index + 1}</div>
+                    <h3 className="text-base font-semibold text-slate-950">{point.title}</h3>
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-slate-900">Attack</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{point.trigger}</p>
+                  <p className="mt-3 text-sm font-semibold text-slate-900">One-sentence fix</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{point.repair}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <footer className="mt-8 border-t border-slate-200 pt-5 text-xs leading-6 text-slate-500">
+          Export generated from Debate Me feedback. Use your browser&apos;s “Save as PDF”
+          option after pressing Print.
+        </footer>
+      </article>
+    </main>
+  );
+}

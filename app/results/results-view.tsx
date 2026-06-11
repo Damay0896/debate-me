@@ -106,6 +106,10 @@ function describeMetricTier(score: number) {
   return "Critical";
 }
 
+function cleanReplayFocus(value: string) {
+  return value.replace(/^Replay focus:\s*/i, "").trim();
+}
+
 export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   const router = useRouter();
   const isClient = useIsClient();
@@ -288,6 +292,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
         : "theme-status-developing";
   const topMetric = getTopMetric(report.metrics);
   const bottomMetric = getBottomMetric(report.metrics);
+  const replayFocus = cleanReplayFocus(report.replayFocus);
   const confidenceRingStyle = {
     "--score": `${report.winnerConfidence}%`,
   } as CSSProperties;
@@ -314,9 +319,14 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
       router.push(
         `/debate?session=${createId("session")}&topic=${encodeURIComponent(
           activeSession.topic,
-        )}&side=${activeSession.userSide}&personality=${activeSession.opponentPersonality}&style=${activeSession.replyStyle}&focus=${encodeURIComponent(report.replayFocus)}`,
+        )}&side=${activeSession.userSide}&personality=${activeSession.opponentPersonality}&style=${activeSession.replyStyle}&focus=${encodeURIComponent(replayFocus)}`,
       );
     });
+  }
+
+  function exportFeedbackPdf() {
+    const url = `/results/export?session=${activeSession.id}&autoprint=1`;
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -371,6 +381,13 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                 className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
               >
                 Replay the Debate Better
+              </button>
+              <button
+                type="button"
+                onClick={exportFeedbackPdf}
+                className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition"
+              >
+                Export Feedback PDF
               </button>
               <Link
                 href="/"
@@ -512,7 +529,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                     Replay focus
                   </p>
                   <p className="theme-strong mt-3 text-sm leading-6">
-                    {report.replayFocus}
+                    {replayFocus}
                   </p>
                 </div>
               </aside>
@@ -614,17 +631,26 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
               <p className="theme-muted text-xs uppercase tracking-[0.24em]">
                 Replay directive
               </p>
-              <p className="theme-copy mt-3 text-sm leading-6">{report.replayFocus}</p>
+              <p className="theme-copy mt-3 text-sm leading-6">{replayFocus}</p>
             </div>
 
-            <button
-              type="button"
-              disabled={isRouting}
-              onClick={replayDebateBetter}
-              className="theme-button-primary mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
-            >
-              Replay With This Fix
-            </button>
+            <div className="mt-6 grid gap-3">
+              <button
+                type="button"
+                disabled={isRouting}
+                onClick={replayDebateBetter}
+                className="theme-button-primary inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
+              >
+                Replay With This Fix
+              </button>
+              <button
+                type="button"
+                onClick={exportFeedbackPdf}
+                className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-semibold transition"
+              >
+                Export This Feedback
+              </button>
+            </div>
           </section>
         </section>
 

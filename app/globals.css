@@ -645,6 +645,114 @@ html[data-theme="light"] .theme-accent-chip {
   position: relative;
 }
 
+.report-quote::before {
+  content: "\201C";
+}
+
+.export-mode .theme-toggle {
+  display: none;
+}
+
+.export-page {
+  background:
+    linear-gradient(180deg, #eef2f7 0%, #e6ecf3 100%);
+  color: #0f172a;
+}
+
+.export-sheet {
+  background: #fff;
+  border: 1px solid #d7dee7;
+  box-shadow: 0 24px 72px rgba(15, 23, 42, 0.12);
+}
+
+.export-card,
+.export-score-box {
+  background: #fff;
+}
+
+.export-verdict-pill {
+  background: #f8e7b6;
+  color: #8a4b12;
+}
+
+.export-list {
+  padding-left: 1rem;
+}
+
+.export-list li {
+  color: #334155;
+  line-height: 1.65;
+}
+
+.export-plan-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.export-plan-index {
+  display: inline-flex;
+  height: 1.9rem;
+  width: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #f8e7b6;
+  color: #8a4b12;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+@page {
+  size: A4;
+  margin: 0.5in;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body.export-mode {
+    color: #0f172a;
+  }
+
+  .theme-toggle,
+  .export-actions {
+    display: none !important;
+  }
+
+  .export-page {
+    min-height: auto;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  .export-sheet {
+    max-width: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+  }
+
+  .export-section,
+  .export-card,
+  .export-score-box,
+  .export-header,
+  .export-sheet footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}
+
 .report-hero .theme-pill,
 .report-rise .theme-pill {
   backdrop-filter: blur(10px);
