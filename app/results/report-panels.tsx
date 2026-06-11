@@ -11,6 +11,7 @@ import type {
   DebateAnalysis,
   DebateMetric,
   FallacyFlag,
+  MomentumBeat,
 } from "@/lib/debate";
 
 const metricGlow: Record<DebateMetric["key"], string> = {
@@ -106,24 +107,50 @@ function getNodeDimensions(node: ArgumentMapNode, lineCount: number) {
   return { width, height };
 }
 
+function describeMetricTier(score: number) {
+  if (score >= 78) {
+    return "Elite";
+  }
+
+  if (score >= 66) {
+    return "Strong";
+  }
+
+  if (score >= 52) {
+    return "Live";
+  }
+
+  if (score >= 38) {
+    return "Fragile";
+  }
+
+  return "Critical";
+}
+
 function Panel({
+  id,
   eyebrow,
   title,
   description,
   children,
 }: {
+  id?: string;
   eyebrow: string;
   title: string;
   description: string;
   children: ReactNode;
 }) {
   return (
-    <section className="theme-card report-rise rounded-[2rem] border p-6 shadow-xl backdrop-blur">
+    <section
+      id={id}
+      className="theme-card report-panel-shell report-rise scroll-mt-28 rounded-[2rem] border p-6 shadow-xl backdrop-blur"
+    >
       <p className="theme-muted text-xs uppercase tracking-[0.32em]">{eyebrow}</p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <h2 className="theme-strong text-2xl font-semibold">{title}</h2>
         <p className="theme-muted max-w-xl text-sm leading-6">{description}</p>
       </div>
+      <div className="report-section-rule mt-5" />
       <div className="mt-6">{children}</div>
     </section>
   );
@@ -142,23 +169,33 @@ function SkillBreakdown({ metrics }: { metrics: DebateMetric[] }) {
       {metrics.map((metric, index) => (
         <article
           key={metric.key}
-          className="theme-surface rounded-[1.6rem] border p-4"
+          className="theme-surface rounded-[1.7rem] border p-4"
           style={{ animationDelay: `${index * 60}ms` }}
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="theme-muted text-sm uppercase tracking-[0.22em]">
-                {metric.label}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="theme-muted text-sm uppercase tracking-[0.22em]">
+                  {metric.label}
+                </p>
+                <span className="report-tier-chip rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em]">
+                  {describeMetricTier(metric.score)}
+                </span>
+              </div>
               <p className="theme-copy mt-2 text-sm leading-6">{metric.note}</p>
             </div>
-            <p className="theme-strong text-3xl font-semibold">{metric.score}</p>
+            <div className="text-right">
+              <p className="theme-strong text-3xl font-semibold">{metric.score}</p>
+              <p className="theme-muted mt-1 text-xs uppercase tracking-[0.18em]">
+                out of 100
+              </p>
+            </div>
           </div>
 
-          <div className="mt-4 h-3 overflow-hidden rounded-full bg-[var(--track)]">
+          <div className="report-meter-track mt-5 h-3 overflow-hidden rounded-full">
             <div
               className={cx(
-                "h-full origin-left rounded-full bg-gradient-to-r transition-[width,transform] duration-700 ease-out",
+                "report-meter-fill h-full origin-left rounded-full bg-gradient-to-r transition-[width,transform] duration-700 ease-out",
                 metricGlow[metric.key],
               )}
               style={{
@@ -173,6 +210,40 @@ function SkillBreakdown({ metrics }: { metrics: DebateMetric[] }) {
   );
 }
 
+function MomentumPanel({ momentum }: { momentum: MomentumBeat[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {momentum.map((beat, index) => (
+        <article key={`${beat.label}-${index}`} className="theme-surface rounded-[1.5rem] border p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="theme-accent-chip flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold">
+                {index + 1}
+              </div>
+              <div>
+                <p className="theme-strong text-base font-semibold">{beat.label}</p>
+                <p className="theme-muted text-xs uppercase tracking-[0.18em]">
+                  Round temperature
+                </p>
+              </div>
+            </div>
+            <p className="theme-strong text-2xl font-semibold">{beat.score}</p>
+          </div>
+
+          <div className="report-meter-track mt-4 h-2 overflow-hidden rounded-full">
+            <div
+              className="report-meter-fill h-full rounded-full bg-gradient-to-r from-[var(--accent)] via-[var(--accent-strong)] to-white/75"
+              style={{ width: `${beat.score}%` }}
+            />
+          </div>
+
+          <p className="theme-copy mt-3 text-sm leading-6">{beat.note}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function CoachFeedback({
   strengths,
   weaknesses,
@@ -181,38 +252,49 @@ function CoachFeedback({
   return (
     <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
       <div className="space-y-4">
-        <article className="theme-surface rounded-[1.5rem] border p-5">
+        <article className="theme-surface rounded-[1.55rem] border p-5">
           <p className="theme-muted text-xs uppercase tracking-[0.24em]">Keep doing this</p>
-          <ul className="theme-copy mt-4 space-y-3 text-sm leading-6">
+          <ul className="mt-4 space-y-3">
             {strengths.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item} className="report-list-item">
+                <span className="report-list-dot bg-emerald-400/80" />
+                <span className="theme-copy text-sm leading-6">{item}</span>
+              </li>
             ))}
           </ul>
         </article>
 
-        <article className="theme-surface rounded-[1.5rem] border p-5">
+        <article className="theme-surface rounded-[1.55rem] border p-5">
           <p className="theme-muted text-xs uppercase tracking-[0.24em]">Still leaking here</p>
-          <ul className="theme-copy mt-4 space-y-3 text-sm leading-6">
+          <ul className="mt-4 space-y-3">
             {weaknesses.map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item} className="report-list-item">
+                <span className="report-list-dot bg-amber-400/80" />
+                <span className="theme-copy text-sm leading-6">{item}</span>
+              </li>
             ))}
           </ul>
         </article>
       </div>
 
-      <article className="theme-surface rounded-[1.6rem] border p-5">
+      <article className="theme-surface rounded-[1.7rem] border p-5">
         <p className="theme-muted text-xs uppercase tracking-[0.24em]">Coach feedback</p>
         <h3 className="mt-3 text-xl font-semibold">What to fix in the very next round</h3>
         <div className="mt-5 space-y-3">
           {nextSteps.map((item, index) => (
             <div
               key={item}
-              className="theme-subcard rounded-[1.25rem] border p-4"
+              className="theme-subcard rounded-[1.3rem] border p-4"
             >
-              <p className="theme-muted text-xs uppercase tracking-[0.24em]">
-                Move {index + 1}
-              </p>
-              <p className="theme-strong mt-2 text-sm leading-6">{item}</p>
+              <div className="flex items-center gap-3">
+                <div className="theme-accent-chip flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold">
+                  {index + 1}
+                </div>
+                <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                  Move {index + 1}
+                </p>
+              </div>
+              <p className="theme-strong mt-3 text-sm leading-6">{item}</p>
             </div>
           ))}
         </div>
@@ -225,7 +307,7 @@ function BestNextImprovementCard({ analysis }: { analysis: DebateAnalysis }) {
   const { bestNextImprovement } = analysis;
 
   return (
-    <article className="theme-surface rounded-[1.7rem] border p-5">
+    <article className="theme-surface report-feature-card rounded-[1.75rem] border p-5">
       <p className="theme-muted text-xs uppercase tracking-[0.24em]">Highest-value fix</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <span className="theme-accent-chip rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
@@ -263,7 +345,7 @@ function ArgumentMapDiagram({ argumentMap }: { argumentMap: ArgumentMap }) {
   );
 
   return (
-    <div className="theme-surface overflow-x-auto rounded-[1.6rem] border p-4">
+    <div className="theme-surface report-diagram-shell overflow-x-auto rounded-[1.7rem] border p-4">
       <svg viewBox="0 0 900 432" className="min-w-[48rem]" aria-label="Argument map">
         <rect x="0" y="0" width="900" height="432" rx="28" fill="var(--diagram-bg)" />
 
@@ -425,9 +507,9 @@ function ArgumentMapDiagram({ argumentMap }: { argumentMap: ArgumentMap }) {
 
 function PremiseClaimStacks({ frames }: { frames: ArgumentFrame[] }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
+    <div className="grid gap-4 xl:grid-cols-2">
       {frames.map((frame) => (
-        <article key={frame.id} className="theme-surface rounded-[1.6rem] border p-5">
+        <article key={frame.id} className="theme-surface rounded-[1.7rem] border p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="theme-muted text-sm uppercase tracking-[0.2em]">{frame.title}</p>
@@ -445,9 +527,12 @@ function PremiseClaimStacks({ frames }: { frames: ArgumentFrame[] }) {
 
           <div className="theme-subcard mt-5 rounded-[1.35rem] border p-4">
             <p className="theme-muted text-xs uppercase tracking-[0.24em]">Premises</p>
-            <ul className="theme-copy mt-3 space-y-2 text-sm leading-6">
+            <ul className="mt-3 space-y-2">
               {frame.premises.map((premise) => (
-                <li key={premise}>{premise}</li>
+                <li key={premise} className="report-list-item">
+                  <span className="report-list-dot bg-[var(--accent)]" />
+                  <span className="theme-copy text-sm leading-6">{premise}</span>
+                </li>
               ))}
             </ul>
           </div>
@@ -474,9 +559,9 @@ function PremiseClaimStacks({ frames }: { frames: ArgumentFrame[] }) {
 
 function LogicalWeaknessCards({ fallacies }: { fallacies: FallacyFlag[] }) {
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 md:grid-cols-2">
       {fallacies.map((flag) => (
-        <article key={`${flag.name}-${flag.evidence}`} className="theme-surface rounded-[1.45rem] border p-5">
+        <article key={`${flag.name}-${flag.evidence}`} className="theme-surface rounded-[1.5rem] border p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <h3 className="theme-strong text-lg font-medium">{flag.name}</h3>
             <span
@@ -501,9 +586,9 @@ function LogicalWeaknessCards({ fallacies }: { fallacies: FallacyFlag[] }) {
 
 function PressureCards({ collapsePoints }: { collapsePoints: CollapsePoint[] }) {
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 xl:grid-cols-3">
       {collapsePoints.map((point, index) => (
-        <article key={`${point.title}-${point.trigger}`} className="theme-surface rounded-[1.45rem] border p-5">
+        <article key={`${point.title}-${point.trigger}`} className="theme-surface rounded-[1.5rem] border p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="theme-accent-chip flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold">
@@ -544,7 +629,10 @@ function PressureCards({ collapsePoints }: { collapsePoints: CollapsePoint[] }) 
 export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) {
   return (
     <div className="grid gap-6">
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+      <section
+        id="skills"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]"
+      >
         <Panel
           eyebrow="Skill Breakdown"
           title="Seven-skill scorecard"
@@ -553,16 +641,29 @@ export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) 
           <SkillBreakdown metrics={analysis.metrics} />
         </Panel>
 
-        <Panel
-          eyebrow="Best Next Improvement"
-          title="The single highest-value fix"
-          description="If you improve only one thing before the next debate, make it this."
-        >
-          <BestNextImprovementCard analysis={analysis} />
-        </Panel>
-      </div>
+        <div className="grid gap-6">
+          <Panel
+            eyebrow="Round Story"
+            title="How the round rose or sagged"
+            description="This is the tempo read: where the round had energy, where it slipped, and where the judge mentally leaned."
+          >
+            <MomentumPanel momentum={analysis.momentum} />
+          </Panel>
 
-      <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
+          <Panel
+            eyebrow="Best Next Improvement"
+            title="The single highest-value fix"
+            description="If you improve only one thing before the next debate, make it this."
+          >
+            <BestNextImprovementCard analysis={analysis} />
+          </Panel>
+        </div>
+      </section>
+
+      <section
+        id="coach"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.02fr_0.98fr]"
+      >
         <Panel
           eyebrow="Coach Feedback"
           title="Actionable coaching, not generic criticism"
@@ -582,9 +683,12 @@ export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) 
         >
           <PressureCards collapsePoints={analysis.collapsePoints} />
         </Panel>
-      </div>
+      </section>
 
-      <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+      <section
+        id="map"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]"
+      >
         <Panel
           eyebrow="Argument Map"
           title={analysis.argumentMap.headline}
@@ -600,7 +704,7 @@ export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) 
         >
           <LogicalWeaknessCards fallacies={analysis.fallacies} />
         </Panel>
-      </div>
+      </section>
 
       <Panel
         eyebrow="Premise To Claim"

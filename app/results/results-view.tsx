@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
   useTransition,
+  type CSSProperties,
 } from "react";
 
 import {
@@ -17,6 +18,7 @@ import {
   getOpponentPersonalityMeta,
   getReplyStyleMeta,
   type DebateAnalysis,
+  type DebateMetric,
   type DebateSession,
 } from "@/lib/debate";
 import {
@@ -36,6 +38,10 @@ type AnalyzeResponse = {
   analysis?: DebateAnalysis;
   source?: "heuristic" | "openrouter";
 };
+
+function cx(...values: Array<string | false | null | undefined>) {
+  return values.filter(Boolean).join(" ");
+}
 
 function getStoredSession(initialSessionId: string) {
   return (
@@ -58,6 +64,46 @@ function subscribeToHydration() {
 
 function useIsClient() {
   return useSyncExternalStore(subscribeToHydration, () => true, () => false);
+}
+
+function getTopMetric(metrics: DebateMetric[]) {
+  return [...metrics].sort((left, right) => right.score - left.score)[0] ?? null;
+}
+
+function getBottomMetric(metrics: DebateMetric[]) {
+  return [...metrics].sort((left, right) => left.score - right.score)[0] ?? null;
+}
+
+function describeConfidence(confidence: number) {
+  if (confidence >= 82) {
+    return "Coach is very confident in this call.";
+  }
+
+  if (confidence >= 70) {
+    return "Coach sees a real edge, but not a blowout.";
+  }
+
+  return "Coach sees this as close enough to swing next time.";
+}
+
+function describeMetricTier(score: number) {
+  if (score >= 78) {
+    return "Elite";
+  }
+
+  if (score >= 66) {
+    return "Strong";
+  }
+
+  if (score >= 52) {
+    return "Live";
+  }
+
+  if (score >= 38) {
+    return "Fragile";
+  }
+
+  return "Critical";
 }
 
 export default function ResultsView({ initialSessionId }: ResultsViewProps) {
@@ -239,25 +285,60 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
       : report.result === "loss"
         ? "theme-status-collapse"
         : "theme-status-developing";
+  const topMetric = getTopMetric(report.metrics);
+  const bottomMetric = getBottomMetric(report.metrics);
+  const confidenceRingStyle = {
+    "--score": `${report.winnerConfidence}%`,
+  } as CSSProperties;
+  const reportSections = [
+    { href: "#verdict", label: "Verdict" },
+    { href: "#skills", label: "Skills" },
+    { href: "#coach", label: "Coaching" },
+    { href: "#map", label: "Map" },
+    { href: "#transcript", label: "Transcript" },
+  ];
+
+  function continueDebate() {
+    startTransition(() => {
+      router.push(
+        `/debate?session=${session.id}&topic=${encodeURIComponent(
+          session.topic,
+        )}&side=${session.userSide}&personality=${session.opponentPersonality}&style=${session.replyStyle}`,
+      );
+    });
+  }
+
+  function replayDebateBetter() {
+    startTransition(() => {
+      router.push(
+        `/debate?session=${createId("session")}&topic=${encodeURIComponent(
+          session.topic,
+        )}&side=${session.userSide}&personality=${session.opponentPersonality}&style=${session.replyStyle}&focus=${encodeURIComponent(report.replayFocus)}`,
+      );
+    });
+  }
 
   return (
-    <main className="min-h-screen px-6 py-8 sm:px-8">
+    <main className="report-shell relative min-h-screen overflow-hidden px-6 py-8 sm:px-8">
+      <div className="report-page-glow pointer-events-none absolute inset-0" />
+      <div className="report-page-grid pointer-events-none absolute inset-0" />
+
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <header className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
+        <header className="theme-card report-rise rounded-[2.2rem] border p-6 backdrop-blur md:p-8">
+          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+            <div className="max-w-3xl">
               <p className="theme-kicker text-sm uppercase tracking-[0.35em]">
                 Debate Report
               </p>
-              <h1 className="mt-3 text-4xl font-semibold text-balance">
+              <h1 className="mt-3 text-4xl font-semibold text-balance md:text-5xl">
                 {session.topic}
               </h1>
-              <p className="theme-copy mt-3 text-lg">
+              <p className="theme-copy mt-4 text-lg leading-8">
                 You argued the {session.userSide.toLowerCase()} side against the{" "}
                 {session.opponentSide.toLowerCase()} side with the{" "}
                 {opponentPersonality.label}-inspired mode in {replyStyle.label} mode.
               </p>
-              <div className="theme-copy mt-4 flex flex-wrap gap-3 text-sm">
+              <div className="theme-copy mt-5 flex flex-wrap gap-3 text-sm">
                 <span className="theme-pill rounded-full border px-4 py-2">
                   Persona: {opponentPersonality.label}
                 </span>
@@ -277,15 +358,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
               <button
                 type="button"
                 disabled={isRouting}
-                onClick={() => {
-                  startTransition(() => {
-                    router.push(
-                      `/debate?session=${session.id}&topic=${encodeURIComponent(
-                        session.topic,
-                      )}&side=${session.userSide}&personality=${session.opponentPersonality}&style=${session.replyStyle}`,
-                    );
-                  });
-                }}
+                onClick={continueDebate}
                 className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
               >
                 Continue debate
@@ -293,15 +366,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
               <button
                 type="button"
                 disabled={isRouting}
-                onClick={() => {
-                  startTransition(() => {
-                    router.push(
-                      `/debate?session=${createId("session")}&topic=${encodeURIComponent(
-                        session.topic,
-                      )}&side=${session.userSide}&personality=${session.opponentPersonality}&style=${session.replyStyle}&focus=${encodeURIComponent(report.replayFocus)}`,
-                    );
-                  });
-                }}
+                onClick={replayDebateBetter}
                 className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
               >
                 Replay the Debate Better
@@ -316,132 +381,279 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
           </div>
         </header>
 
-        <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-          <section className="theme-panel report-hero relative overflow-hidden rounded-[2.2rem] border p-6">
-            <div className="report-hero-glow absolute inset-x-0 top-0 h-40 opacity-80" />
-            <div className="relative">
-              <p className="theme-muted text-sm uppercase tracking-[0.3em]">
-                Round Verdict
-              </p>
-              <div className="mt-5 flex flex-wrap items-end gap-4">
-                <span
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold uppercase tracking-[0.28em] ${resultBannerClass}`}
-                >
-                  {resultBanner}
-                </span>
-                <div>
-                  <p className="theme-muted text-sm uppercase tracking-[0.18em]">
-                    Winner: {winnerLabel} ({report.winnerConfidence}%)
-                  </p>
-                  <h2 className="mt-2 text-4xl font-semibold">{report.verdict}</h2>
-                </div>
-              </div>
+        <nav className="theme-card report-nav sticky top-4 z-20 rounded-[1.6rem] border px-3 py-3 backdrop-blur">
+          <div className="flex flex-wrap items-center gap-2">
+            {reportSections.map((section) => (
+              <a
+                key={section.href}
+                href={section.href}
+                className="report-nav-link rounded-full border px-4 py-2 text-sm font-medium"
+              >
+                {section.label}
+              </a>
+            ))}
+          </div>
+        </nav>
 
-              <p className="theme-copy mt-6 max-w-3xl text-base leading-7">
-                {report.winnerReasoning}
-              </p>
-              <p className="theme-muted mt-4 text-sm">{reportLabel}</p>
-
-              <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                <div className="theme-surface rounded-3xl border p-4">
-                  <p className="theme-muted text-sm uppercase tracking-[0.22em]">
-                    Your turns
-                  </p>
-                  <p className="mt-3 text-3xl font-semibold">{userMessages.length}</p>
-                </div>
-                <div className="theme-surface rounded-3xl border p-4">
-                  <p className="theme-muted text-sm uppercase tracking-[0.22em]">
-                    Total words
-                  </p>
-                  <p className="mt-3 text-3xl font-semibold">{totalWords}</p>
-                </div>
-                <div className="theme-surface rounded-3xl border p-4">
-                  <p className="theme-muted text-sm uppercase tracking-[0.22em]">
-                    Overall score
-                  </p>
-                  <p className="mt-3 text-3xl font-semibold">{report.score}</p>
-                </div>
-              </div>
-
-              {error ? <p className="theme-error mt-5 text-sm">{error}</p> : null}
-              {isLoading ? (
-                <p className="theme-muted mt-5 text-sm">
-                  Refreshing the report with deeper coaching...
+        <section
+          id="verdict"
+          className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.12fr_0.88fr]"
+        >
+          <section className="theme-panel report-hero relative overflow-hidden rounded-[2.35rem] border p-6 md:p-8">
+            <div className="report-hero-glow absolute inset-x-0 top-0 h-44 opacity-80" />
+            <div className="relative grid gap-8 lg:grid-cols-[1fr_16rem]">
+              <div>
+                <p className="theme-muted text-sm uppercase tracking-[0.3em]">
+                  Round Verdict
                 </p>
-              ) : null}
+                <div className="mt-5 flex flex-wrap items-end gap-4">
+                  <span
+                    className={`rounded-full border px-4 py-2 text-sm font-semibold uppercase tracking-[0.28em] ${resultBannerClass}`}
+                  >
+                    {resultBanner}
+                  </span>
+                  <div>
+                    <p className="theme-muted text-sm uppercase tracking-[0.18em]">
+                      Winner: {winnerLabel} ({report.winnerConfidence}%)
+                    </p>
+                    <h2 className="mt-2 text-4xl font-semibold md:text-5xl">
+                      {report.verdict}
+                    </h2>
+                  </div>
+                </div>
+
+                <p className="theme-copy mt-6 max-w-3xl text-base leading-7 md:text-[1.05rem]">
+                  {report.winnerReasoning}
+                </p>
+
+                <div className="mt-7 grid gap-3 sm:grid-cols-3">
+                  <div className="theme-surface rounded-3xl border p-4">
+                    <p className="theme-muted text-sm uppercase tracking-[0.22em]">
+                      Your turns
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold">{userMessages.length}</p>
+                  </div>
+                  <div className="theme-surface rounded-3xl border p-4">
+                    <p className="theme-muted text-sm uppercase tracking-[0.22em]">
+                      Total words
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold">{totalWords}</p>
+                  </div>
+                  <div className="theme-surface rounded-3xl border p-4">
+                    <p className="theme-muted text-sm uppercase tracking-[0.22em]">
+                      Overall score
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold">{report.score}</p>
+                  </div>
+                </div>
+
+                <div className="theme-subcard report-brief-card mt-6 rounded-[1.55rem] border p-4">
+                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                    Coach read
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                    {topMetric ? (
+                      <span className="theme-pill rounded-full border px-4 py-2">
+                        Top skill: {topMetric.label} ({topMetric.score})
+                      </span>
+                    ) : null}
+                    {bottomMetric ? (
+                      <span className="theme-pill rounded-full border px-4 py-2">
+                        Main leak: {bottomMetric.label} ({bottomMetric.score})
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="theme-copy mt-3 text-sm leading-6">
+                    {reportLabel}. {describeConfidence(report.winnerConfidence)}
+                  </p>
+                </div>
+
+                {error ? <p className="theme-error mt-5 text-sm">{error}</p> : null}
+                {isLoading ? (
+                  <p className="theme-muted mt-5 text-sm">
+                    Refreshing the report with deeper coaching...
+                  </p>
+                ) : null}
+              </div>
+
+              <aside className="flex flex-col gap-4">
+                <div className="report-score-ring mx-auto w-full max-w-[15rem]" style={confidenceRingStyle}>
+                  <div className="report-score-ring-inner">
+                    <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                      Coach confidence
+                    </p>
+                    <p className="mt-3 text-5xl font-semibold">
+                      {report.winnerConfidence}
+                      <span className="text-2xl">%</span>
+                    </p>
+                    <p className="theme-copy mt-3 text-sm leading-6">
+                      {describeConfidence(report.winnerConfidence)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="theme-surface rounded-[1.5rem] border p-4">
+                  <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                    Most valuable edge
+                  </p>
+                  <p className="mt-3 text-xl font-semibold">
+                    {topMetric ? topMetric.label : "Still forming"}
+                  </p>
+                  <p className="theme-copy mt-2 text-sm leading-6">
+                    {topMetric
+                      ? `${describeMetricTier(topMetric.score)} enough to give the judge a cleaner route to your ballot.`
+                      : "The biggest advantage in the round is still too close to call."}
+                  </p>
+                </div>
+
+                <div className="theme-surface rounded-[1.5rem] border p-4">
+                  <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                    Replay focus
+                  </p>
+                  <p className="theme-strong mt-3 text-sm leading-6">
+                    {report.replayFocus}
+                  </p>
+                </div>
+              </aside>
             </div>
           </section>
 
-          <section className="theme-card rounded-[2rem] border p-6 backdrop-blur">
+          <section className="theme-card report-rise rounded-[2.2rem] border p-6 backdrop-blur md:p-7">
             <p className="theme-muted text-xs uppercase tracking-[0.32em]">
-              Round Snapshot
+              Coach&apos;s Notebook
             </p>
-            <h2 className="mt-3 text-2xl font-semibold">Why the round landed there</h2>
+            <h2 className="mt-3 text-2xl font-semibold md:text-[2rem]">
+              What swung the ballot
+            </h2>
             <p className="theme-copy mt-4 text-base leading-7">{report.summary}</p>
 
-            <div className="mt-6 grid gap-3">
+            <div className="mt-6 space-y-3">
               {report.highlights.map((item, index) => (
                 <div
                   key={item}
-                  className="theme-surface rounded-[1.4rem] border px-4 py-4"
+                  className="report-highlight-row theme-surface rounded-[1.35rem] border px-4 py-4"
                 >
-                  <p className="theme-muted text-xs uppercase tracking-[0.24em]">
-                    Highlight {index + 1}
-                  </p>
-                  <p className="theme-strong mt-2 text-base leading-6">{item}</p>
+                  <div className="theme-accent-chip flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold">
+                    {index + 1}
+                  </div>
+                  <p className="theme-strong text-sm leading-6">{item}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="theme-subcard rounded-[1.35rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                  Best skill today
+                </p>
+                <p className="mt-2 text-lg font-semibold">
+                  {topMetric ? `${topMetric.label} (${topMetric.score})` : "Still forming"}
+                </p>
+              </div>
+              <div className="theme-subcard rounded-[1.35rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                  Biggest swing area
+                </p>
+                <p className="mt-2 text-lg font-semibold">
+                  {bottomMetric
+                    ? `${bottomMetric.label} (${bottomMetric.score})`
+                    : "Still forming"}
+                </p>
+              </div>
             </div>
           </section>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <section className="theme-card report-rise rounded-[1.8rem] border p-5 backdrop-blur">
-            <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+        <section
+          id="snapshot"
+          className="scroll-mt-28 grid gap-4 xl:grid-cols-[1.1fr_0.75fr_0.9fr]"
+        >
+          <section className="theme-card report-rise report-feature-card rounded-[2rem] border p-6 backdrop-blur">
+            <p className="theme-muted text-xs uppercase tracking-[0.3em]">
               Strongest Argument
             </p>
-            <p className="theme-strong mt-4 text-base leading-7">
+            <h2 className="mt-3 text-2xl font-semibold">The line worth keeping</h2>
+            <blockquote className="report-quote mt-6 rounded-[1.7rem] border px-5 py-5 text-lg leading-8">
               {report.strongestArgument}
+            </blockquote>
+            <p className="theme-copy mt-5 text-sm leading-6">
+              This is the part of your case that most looked like a real ballot path.
+              Build outward from this instead of restarting from scratch next round.
             </p>
           </section>
 
-          <section className="theme-card report-rise rounded-[1.8rem] border p-5 backdrop-blur">
-            <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-              Your Biggest Mistake
-            </p>
-            <p className="theme-strong mt-4 text-base leading-7">
-              {report.biggestUserMistake}
-            </p>
-          </section>
+          <div className="grid gap-4">
+            <section className="theme-card report-rise rounded-[1.8rem] border p-5 backdrop-blur">
+              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                Your Biggest Mistake
+              </p>
+              <p className="theme-strong mt-4 text-base leading-7">
+                {report.biggestUserMistake}
+              </p>
+            </section>
 
-          <section className="theme-card report-rise rounded-[1.8rem] border p-5 backdrop-blur">
-            <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-              AI Opponent Mistake
-            </p>
-            <p className="theme-strong mt-4 text-base leading-7">
-              {report.biggestOpponentMistake}
-            </p>
-          </section>
+            <section className="theme-card report-rise rounded-[1.8rem] border p-5 backdrop-blur">
+              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                AI Opponent Mistake
+              </p>
+              <p className="theme-strong mt-4 text-base leading-7">
+                {report.biggestOpponentMistake}
+              </p>
+            </section>
+          </div>
 
-          <section className="theme-card report-rise rounded-[1.8rem] border p-5 backdrop-blur">
-            <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-              Flip Sentence
+          <section className="theme-panel report-rise rounded-[2rem] border p-6">
+            <p className="theme-muted text-xs uppercase tracking-[0.3em]">
+              Swing The Round
             </p>
-            <p className="theme-strong mt-4 text-base leading-7">
-              {report.flipSentence}
-            </p>
+            <h2 className="mt-3 text-2xl font-semibold">One sentence that changes the result</h2>
+            <p className="theme-strong mt-5 text-lg leading-8">{report.flipSentence}</p>
+
+            <div className="theme-subcard mt-6 rounded-[1.45rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                Replay directive
+              </p>
+              <p className="theme-copy mt-3 text-sm leading-6">{report.replayFocus}</p>
+            </div>
+
+            <button
+              type="button"
+              disabled={isRouting}
+              onClick={replayDebateBetter}
+              className="theme-button-primary mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
+            >
+              Replay With This Fix
+            </button>
           </section>
         </section>
 
         <ResultsReportPanels analysis={report} />
 
-        <section className="theme-panel rounded-[2rem] border p-6">
-          <h2 className="text-2xl font-semibold">Transcript tail</h2>
-          <div className="mt-5 space-y-3">
+        <section
+          id="transcript"
+          className="theme-panel scroll-mt-28 rounded-[2.1rem] border p-6"
+        >
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="theme-muted text-xs uppercase tracking-[0.3em]">
+                Transcript Tail
+              </p>
+              <h2 className="mt-2 text-2xl font-semibold">The last exchange that shaped the read</h2>
+            </div>
+            <p className="theme-copy max-w-xl text-sm leading-6">
+              This is the closing pocket of the round the report is reacting to, so you can
+              connect every coaching point back to actual debate language.
+            </p>
+          </div>
+
+          <div className="report-transcript-scroll mt-6 space-y-3">
             {transcriptPreview.map((message) => (
               <article
                 key={message.id}
-                className="theme-surface rounded-[1.4rem] border p-4"
+                className={cx(
+                  "rounded-[1.55rem] border p-5",
+                  message.speaker === "You" ? "theme-chat-user" : "theme-chat-opponent",
+                )}
               >
                 <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
                   {message.speaker}
