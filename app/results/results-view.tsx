@@ -29,6 +29,7 @@ import {
   saveAnalysis,
 } from "@/lib/debate-storage";
 
+import { buildReportInsights } from "./report-insights";
 import { ResultsReportPanels } from "./report-panels";
 
 type ResultsViewProps = {
@@ -258,12 +259,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   const isLoading =
     shouldRefreshAnalysis && remoteAnalysis.sessionKey !== sessionKey;
   const report = liveAnalysis ?? reportFromStorage ?? getFallbackAnalysis(session);
-  const userMessages = session.messages.filter((message) => message.speaker === "You");
   const transcriptPreview = session.messages.slice(-6);
-  const totalWords = userMessages.reduce(
-    (count, message) => count + message.text.split(/\s+/).filter(Boolean).length,
-    0,
-  );
   const opponentPersonality = getOpponentPersonalityMeta(session.opponentPersonality);
   const replyStyle = getReplyStyleMeta(session.replyStyle);
   const reportLabel = isLoading
@@ -291,6 +287,18 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   const topMetric = getTopMetric(report.metrics);
   const bottomMetric = getBottomMetric(report.metrics);
   const replayFocus = cleanReplayFocus(report.replayFocus);
+  const reportInsights = buildReportInsights(session, report);
+  const hasTranscriptArchive = reportInsights.hasTranscriptArchive;
+  const turnStatLabel = hasTranscriptArchive ? "Your turns" : "Round source";
+  const turnStatValue = hasTranscriptArchive
+    ? `${reportInsights.turnCount}`
+    : analysisSource === "openrouter"
+      ? "Coach"
+      : "Saved";
+  const wordStatLabel = hasTranscriptArchive ? "Total words" : "Transcript";
+  const wordStatValue = hasTranscriptArchive
+    ? `${reportInsights.totalWords}`
+    : "Missing";
   const confidenceRingStyle = {
     "--score": `${report.winnerConfidence}%`,
   } as CSSProperties;
@@ -453,15 +461,15 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                 <div className="mt-7 grid gap-3 sm:grid-cols-3">
                   <div className="theme-surface rounded-3xl border p-4">
                     <p className="theme-muted text-sm uppercase tracking-[0.22em]">
-                      Your turns
+                      {turnStatLabel}
                     </p>
-                    <p className="mt-3 text-3xl font-semibold">{userMessages.length}</p>
+                    <p className="mt-3 text-3xl font-semibold">{turnStatValue}</p>
                   </div>
                   <div className="theme-surface rounded-3xl border p-4">
                     <p className="theme-muted text-sm uppercase tracking-[0.22em]">
-                      Total words
+                      {wordStatLabel}
                     </p>
-                    <p className="mt-3 text-3xl font-semibold">{totalWords}</p>
+                    <p className="mt-3 text-3xl font-semibold">{wordStatValue}</p>
                   </div>
                   <div className="theme-surface rounded-3xl border p-4">
                     <p className="theme-muted text-sm uppercase tracking-[0.22em]">
@@ -470,6 +478,13 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                     <p className="mt-3 text-3xl font-semibold">{report.score}</p>
                   </div>
                 </div>
+
+                {!hasTranscriptArchive ? (
+                  <p className="theme-muted mt-4 text-sm leading-6">
+                    This saved round still has the full coaching analysis, but the
+                    original turn-by-turn transcript archive was not preserved.
+                  </p>
+                ) : null}
 
                 <div className="theme-subcard report-brief-card mt-6 rounded-[1.55rem] border p-4">
                   <p className="theme-muted text-xs uppercase tracking-[0.28em]">

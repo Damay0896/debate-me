@@ -25,6 +25,8 @@ import {
   saveAnalysis,
 } from "@/lib/debate-storage";
 
+import { buildReportInsights } from "../report-insights";
+
 type ResultsExportViewProps = {
   autoPrint: boolean;
   initialSessionId: string;
@@ -237,6 +239,7 @@ export default function ResultsExportView({
   const replyStyle = getReplyStyleMeta(session.replyStyle);
   const winnerLabel = getDisplayWinnerLabel(report.winner);
   const replayFocus = cleanReplayFocus(report.replayFocus);
+  const reportInsights = buildReportInsights(session, report);
 
   return (
     <main className="export-page min-h-screen px-4 py-8">
@@ -341,6 +344,76 @@ export default function ResultsExportView({
             <p className="mt-4 text-base leading-8 text-slate-800">
               {report.summary}
             </p>
+            {!reportInsights.hasTranscriptArchive ? (
+              <div className="mt-4 rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-900">
+                This export still includes the full saved coaching report, but the
+                original turn-by-turn transcript archive was not preserved for this
+                round. Quote and pattern sections below are inferred from the saved
+                analysis.
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="export-section mt-8 grid gap-5 md:grid-cols-2">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Quote lab
+            </p>
+            <div className="mt-4 space-y-4">
+              {reportInsights.quoteInsights.map((item) => (
+                <article
+                  key={item.label}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950">
+                        {item.label}
+                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {item.speaker}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-slate-200 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                      Quote
+                    </span>
+                  </div>
+                  <p className="mt-4 rounded-[0.9rem] bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900">
+                    {item.quote}
+                  </p>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">
+                    {item.note}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Speech pattern radar
+            </p>
+            <div className="mt-4 grid gap-4">
+              {reportInsights.patternStats.map((item) => (
+                <article
+                  key={item.label}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-950">
+                      {item.label}
+                    </p>
+                    <span className="rounded-full border border-slate-200 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                      {item.value}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">
+                    {item.note}
+                  </p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -556,6 +629,58 @@ export default function ResultsExportView({
           </div>
         </section>
 
+        <section className="export-section mt-8 grid gap-5 md:grid-cols-2">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Judge ballot
+            </p>
+            <div className="mt-4 space-y-4">
+              {reportInsights.ballotCallouts.map((item) => (
+                <article
+                  key={item.label}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {item.label}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-800">
+                    {item.value}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Replay blueprint
+            </p>
+            <div className="mt-4 space-y-4">
+              {reportInsights.replaySteps.map((item, index) => (
+                <article
+                  key={item.label}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="export-plan-index">{index + 1}</div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-950">
+                        {item.line}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">
+                    {item.note}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="export-section mt-8">
           <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
@@ -669,6 +794,65 @@ export default function ResultsExportView({
                   </p>
                   <p className="mt-1 text-sm leading-6 text-slate-700">
                     {point.repair}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="export-section mt-8 grid gap-5 md:grid-cols-2">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Crossfire drill
+            </p>
+            <div className="mt-4 space-y-4">
+              {reportInsights.drillQuestions.map((item) => (
+                <article
+                  key={item.title}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    {item.title}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-800">
+                    {item.prompt}
+                  </p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Best answer
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {item.answer}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Case surgery
+            </p>
+            <div className="mt-4 space-y-4">
+              {reportInsights.caseRepairs.map((item, index) => (
+                <article
+                  key={`${item.title}-${index}`}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <p className="text-sm font-semibold text-slate-950">
+                    {item.title}
+                  </p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Structural weakness
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {item.weakness}
+                  </p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Best repair
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-800">
+                    {item.fix}
                   </p>
                 </article>
               ))}
