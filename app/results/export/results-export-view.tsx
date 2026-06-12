@@ -1,23 +1,38 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import {
   buildHeuristicAnalysis,
   coerceDebateAnalysis,
   getOpponentPersonalityMeta,
   getReplyStyleMeta,
+  type DebateAnalysis,
   type DebateSession,
 } from "@/lib/debate";
 import {
-  loadAnalysis,
+  buildAnalysisSessionKey,
+  loadAnalysisRecord,
   loadSession,
+  needsAnalysisRefresh,
+  saveAnalysis,
 } from "@/lib/debate-storage";
 
 type ResultsExportViewProps = {
   autoPrint: boolean;
   initialSessionId: string;
+};
+
+type AnalyzeResponse = {
+  analysis?: DebateAnalysis;
+  source?: "heuristic" | "openrouter";
 };
 
 function getStoredSession(initialSessionId: string) {
@@ -58,15 +73,91 @@ export default function ResultsExportView({
     () => (isClient ? getStoredSession(initialSessionId) : null),
     [initialSessionId, isClient],
   );
+  const storedAnalysisRecord = useMemo(
+    () => (session ? loadAnalysisRecord(session.id) : null),
+    [session],
+  );
+  const fallbackAnalysis = useMemo(
+    () => (session ? getFallbackAnalysis(session) : null),
+    [session],
+  );
+  const shouldRefreshAnalysis =
+    session && storedAnalysisRecord
+      ? needsAnalysisRefresh(session, storedAnalysisRecord)
+      : session !== null;
+  const sessionKey = session ? buildAnalysisSessionKey(session) : "";
+  const [remoteAnalysis, setRemoteAnalysis] = useState<{
+    analysis: DebateAnalysis | null;
+    sessionKey: string;
+  }>({
+    analysis: null,
+    sessionKey: "",
+  });
 
-  const report = useMemo(() => {
-    if (!session) {
+  const reportFromStorage = useMemo(() => {
+    if (!session || !fallbackAnalysis) {
       return null;
     }
 
-    const fallbackAnalysis = getFallbackAnalysis(session);
-    return coerceDebateAnalysis(loadAnalysis(session.id), fallbackAnalysis);
-  }, [session]);
+    return storedAnalysisRecord?.analysis
+      ? coerceDebateAnalysis(storedAnalysisRecord.analysis, fallbackAnalysis)
+      : fallbackAnalysis;
+  }, [fallbackAnalysis, session, storedAnalysisRecord]);
+
+  useEffect(() => {
+    if (!session || !fallbackAnalysis || !shouldRefreshAnalysis) {
+      return;
+    }
+
+    const activeSession = session;
+    const activeFallbackAnalysis = fallbackAnalysis;
+    const activeSessionKey = sessionKey;
+    let isCancelled = false;
+
+    async function requestAnalysis() {
+      try {
+        const response = await fetch("/api/analyze", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            session: activeSession,
+          }),
+        });
+
+        const data = (await response.json()) as AnalyzeResponse;
+        const nextAnalysis = coerceDebateAnalysis(data.analysis, activeFallbackAnalysis);
+        const source = data.source ?? "heuristic";
+
+        if (isCancelled) {
+          return;
+        }
+
+        setRemoteAnalysis({
+          analysis: nextAnalysis,
+          sessionKey: activeSessionKey,
+        });
+        saveAnalysis(activeSession, nextAnalysis, source);
+      } catch {
+        if (isCancelled) {
+          return;
+        }
+
+        setRemoteAnalysis({
+          analysis: activeFallbackAnalysis,
+          sessionKey: activeSessionKey,
+        });
+        saveAnalysis(activeSession, activeFallbackAnalysis, "heuristic");
+      }
+    }
+
+    void requestAnalysis();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [fallbackAnalysis, session, sessionKey, shouldRefreshAnalysis]);
 
   useEffect(() => {
     document.body.classList.add("export-mode");
@@ -76,8 +167,15 @@ export default function ResultsExportView({
     };
   }, []);
 
+  const hasPrintableReport =
+    reportFromStorage !== null || remoteAnalysis.sessionKey === sessionKey;
+
   useEffect(() => {
-    if (!autoPrint || hasPrintedRef.current || !report) {
+    if (!autoPrint || hasPrintedRef.current || !hasPrintableReport) {
+      return;
+    }
+
+    if (shouldRefreshAnalysis && remoteAnalysis.sessionKey !== sessionKey) {
       return;
     }
 
@@ -88,7 +186,13 @@ export default function ResultsExportView({
     }, 320);
 
     return () => window.clearTimeout(timer);
-  }, [autoPrint, report]);
+  }, [
+    autoPrint,
+    hasPrintableReport,
+    remoteAnalysis.sessionKey,
+    sessionKey,
+    shouldRefreshAnalysis,
+  ]);
 
   useEffect(() => {
     if (!session) {
@@ -101,6 +205,12 @@ export default function ResultsExportView({
   if (!isClient) {
     return null;
   }
+
+  const liveReport =
+    remoteAnalysis.sessionKey === sessionKey ? remoteAnalysis.analysis : null;
+  const report = liveReport ?? reportFromStorage;
+  const isLoading =
+    shouldRefreshAnalysis && remoteAnalysis.sessionKey !== sessionKey;
 
   if (!session || !report) {
     return (
@@ -148,6 +258,12 @@ export default function ResultsExportView({
 
       <article className="export-sheet mx-auto max-w-[8.27in] rounded-[1.5rem] p-8 md:p-10">
         <header className="export-header border-b border-slate-200 pb-6">
+          {isLoading ? (
+            <div className="mb-5 rounded-[1.2rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+              Refreshing the upgraded coach analysis before export so the PDF matches
+              the latest report format.
+            </div>
+          ) : null}
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="max-w-3xl">
               <p className="text-xs font-semibold uppercase tracking-[0.32em] text-amber-700">

@@ -22,8 +22,10 @@ import {
   type DebateSession,
 } from "@/lib/debate";
 import {
-  loadAnalysis,
+  buildAnalysisSessionKey,
+  loadAnalysisRecord,
   loadSession,
+  needsAnalysisRefresh,
   saveAnalysis,
 } from "@/lib/debate-storage";
 
@@ -48,10 +50,6 @@ function getStoredSession(initialSessionId: string) {
 
 function getFallbackAnalysis(session: DebateSession) {
   return buildHeuristicAnalysis(session);
-}
-
-function hasStoredAnalysis(session: DebateSession) {
-  return loadAnalysis(session.id) !== null;
 }
 
 function subscribeToHydration() {
@@ -113,8 +111,8 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     () => (isClient ? getStoredSession(initialSessionId) : null),
     [initialSessionId, isClient],
   );
-  const storedAnalysis = useMemo(
-    () => (session ? loadAnalysis(session.id) : null),
+  const storedAnalysisRecord = useMemo(
+    () => (session ? loadAnalysisRecord(session.id) : null),
     [session],
   );
   const fallbackAnalysis = useMemo(
@@ -126,13 +124,16 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
       return null;
     }
 
-    return storedAnalysis
-      ? coerceDebateAnalysis(storedAnalysis, fallbackAnalysis)
+    return storedAnalysisRecord?.analysis
+      ? coerceDebateAnalysis(storedAnalysisRecord.analysis, fallbackAnalysis)
       : fallbackAnalysis;
-  }, [fallbackAnalysis, session, storedAnalysis]);
-  const hadCachedAnalysis = session ? hasStoredAnalysis(session) : false;
+  }, [fallbackAnalysis, session, storedAnalysisRecord]);
+  const shouldRefreshAnalysis =
+    session && storedAnalysisRecord
+      ? needsAnalysisRefresh(session, storedAnalysisRecord)
+      : session !== null;
   const sessionKey = session
-    ? `${session.id}:${session.updatedAt}:${session.messages.length}`
+    ? buildAnalysisSessionKey(session)
     : "";
   const [remoteAnalysis, setRemoteAnalysis] = useState<{
     analysis: DebateAnalysis | null;
@@ -148,7 +149,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   const [isRouting, startTransition] = useTransition();
 
   useEffect(() => {
-    if (!session || !fallbackAnalysis || hadCachedAnalysis) {
+    if (!session || !fallbackAnalysis || !shouldRefreshAnalysis) {
       return;
     }
 
@@ -184,7 +185,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
           sessionKey: activeSessionKey,
           source,
         });
-        saveAnalysis(activeSession.id, nextAnalysis);
+        saveAnalysis(activeSession, nextAnalysis, source);
       } catch {
         if (isCancelled) {
           return;
@@ -196,7 +197,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
           sessionKey: activeSessionKey,
           source: "heuristic",
         });
-        saveAnalysis(activeSession.id, activeFallbackAnalysis);
+        saveAnalysis(activeSession, activeFallbackAnalysis, "heuristic");
       }
     }
 
@@ -205,7 +206,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     return () => {
       isCancelled = true;
     };
-  }, [fallbackAnalysis, hadCachedAnalysis, session, sessionKey]);
+  }, [fallbackAnalysis, session, sessionKey, shouldRefreshAnalysis]);
 
   if (!isClient) {
     return (
@@ -251,10 +252,11 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   const analysisSource =
     remoteAnalysis.sessionKey === sessionKey
       ? remoteAnalysis.source
-      : "heuristic";
+      : storedAnalysisRecord?.source ?? "heuristic";
   const error =
     remoteAnalysis.sessionKey === sessionKey ? remoteAnalysis.error : null;
-  const isLoading = !hadCachedAnalysis && remoteAnalysis.sessionKey !== sessionKey;
+  const isLoading =
+    shouldRefreshAnalysis && remoteAnalysis.sessionKey !== sessionKey;
   const report = liveAnalysis ?? reportFromStorage ?? getFallbackAnalysis(session);
   const userMessages = session.messages.filter((message) => message.speaker === "You");
   const transcriptPreview = session.messages.slice(-4);
@@ -268,7 +270,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     ? "Refreshing with deeper coaching"
     : analysisSource === "openrouter"
       ? "AI coach + instant scoring"
-      : hadCachedAnalysis
+      : storedAnalysisRecord
         ? "Saved coaching report"
         : "Instant scoring report";
   const activeSession = session;
