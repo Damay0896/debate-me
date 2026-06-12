@@ -1,4 +1,5 @@
 import {
+  normalizeLiveFeedbackMode,
   normalizeOpponentPersonality,
   normalizeReplyStyle,
   normalizeSideChoice,
@@ -16,6 +17,7 @@ type DebatePageProps = {
     personality?: string | string[];
     style?: string | string[];
     focus?: string | string[];
+    coach?: string | string[];
   }>;
 };
 
@@ -32,6 +34,9 @@ export default async function DebatePage({ searchParams }: DebatePageProps) {
       initialSideChoice={normalizeSideChoice(readSearchParam(params.side))}
       initialTopic={normalizeTopic(readSearchParam(params.topic))}
       initialCoachFocus={readSearchParam(params.focus) ?? ""}
+      initialLiveFeedbackMode={normalizeLiveFeedbackMode(
+        readSearchParam(params.coach),
+      )}
     />
   );
 }

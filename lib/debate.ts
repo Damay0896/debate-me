@@ -136,6 +136,7 @@ export type DebateSession = {
   opponentSide: DebateSide;
   opponentPersonality: OpponentPersonality;
   replyStyle: ReplyStyle;
+  liveFeedbackMode: boolean;
   startedAt: string;
   updatedAt: string;
   messages: DebateMessage[];
@@ -2708,6 +2709,18 @@ export function normalizeReplyStyle(value?: string): ReplyStyle {
   return DEFAULT_REPLY_STYLE;
 }
 
+export function normalizeLiveFeedbackMode(
+  value?: boolean | number | string | null,
+) {
+  return (
+    value === true ||
+    value === 1 ||
+    value === "1" ||
+    value === "true" ||
+    value === "on"
+  );
+}
+
 export function getOpponentPersonalityMeta(personality: OpponentPersonality) {
   return {
     id: personality,
@@ -2784,12 +2797,14 @@ export function createSession(input: {
   sideChoice: SideChoice;
   opponentPersonality: OpponentPersonality;
   replyStyle: ReplyStyle;
+  liveFeedbackMode?: boolean;
 }): DebateSession {
   const userSide = resolveDebateSide(input.sideChoice);
   const opponentSide = oppositeSide(userSide);
   const topic = normalizeTopic(input.topic);
   const opponentPersonality = normalizeOpponentPersonality(input.opponentPersonality);
   const replyStyle = normalizeReplyStyle(input.replyStyle);
+  const liveFeedbackMode = normalizeLiveFeedbackMode(input.liveFeedbackMode);
   const now = new Date().toISOString();
 
   return {
@@ -2799,6 +2814,7 @@ export function createSession(input: {
     opponentSide,
     opponentPersonality,
     replyStyle,
+    liveFeedbackMode,
     startedAt: now,
     updatedAt: now,
     messages: [
@@ -2853,6 +2869,11 @@ export function coerceDebateSession(value: unknown): DebateSession | null {
   const replyStyle = normalizeReplyStyle(
     typeof value.replyStyle === "string" ? value.replyStyle : undefined,
   );
+  const liveFeedbackMode = normalizeLiveFeedbackMode(
+    typeof value.liveFeedbackMode === "boolean" || typeof value.liveFeedbackMode === "string"
+      ? value.liveFeedbackMode
+      : false,
+  );
   const messagesSource = Array.isArray(value.messages) ? value.messages : [];
   const messages = messagesSource
     .map((item) => {
@@ -2902,6 +2923,7 @@ export function coerceDebateSession(value: unknown): DebateSession | null {
         : oppositeSide(userSide),
     opponentPersonality,
     replyStyle,
+    liveFeedbackMode,
     startedAt:
       typeof value.startedAt === "string" && cleanText(value.startedAt)
         ? value.startedAt

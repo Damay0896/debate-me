@@ -44,6 +44,7 @@ type DebateExperienceProps = {
   initialSideChoice: SideChoice;
   initialTopic: string;
   initialCoachFocus: string;
+  initialLiveFeedbackMode: boolean;
 };
 
 type CoachStat = {
@@ -57,6 +58,20 @@ type DraftCheck = {
   label: string;
   note: string;
   ready: boolean;
+};
+
+type TurnFeedback = {
+  critique: string;
+  nextFix: string;
+  score: number;
+  strongestPart: string;
+};
+
+type AttackWindow = {
+  label: string;
+  punch: string;
+  reason: string;
+  title: string;
 };
 
 function countWords(value: string) {
@@ -75,23 +90,173 @@ function getTone(count: number, strongThreshold: number, midThreshold: number) {
   return "warning" as const;
 }
 
+function clampScore(score: number) {
+  return Math.max(18, Math.min(96, Math.round(score)));
+}
+
 function getInitialSession(
   initialSessionId: string,
   initialOpponentPersonality: OpponentPersonality,
   initialReplyStyle: ReplyStyle,
   initialSideChoice: SideChoice,
   initialTopic: string,
+  initialLiveFeedbackMode: boolean,
 ) {
   return (
     (initialSessionId.trim() !== "" ? loadSession(initialSessionId) : null) ??
     createSession({
       sessionId: initialSessionId || undefined,
+      liveFeedbackMode: initialLiveFeedbackMode,
       opponentPersonality: initialOpponentPersonality,
       replyStyle: initialReplyStyle,
       topic: initialTopic,
       sideChoice: initialSideChoice,
     })
   );
+}
+
+function buildTurnFeedback(text: string): TurnFeedback | null {
+  const trimmed = text.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const wordCount = countWords(trimmed);
+  const hasEvidence = evidencePattern.test(trimmed);
+  const hasWarrant = warrantPattern.test(trimmed);
+  const hasImpact = impactPattern.test(trimmed);
+  const hasRebuttal = rebuttalPattern.test(trimmed);
+  const hasWeighing = weighingPattern.test(trimmed);
+  const hasDefinition = definitionPattern.test(trimmed);
+  const hasAbsolute = absolutePattern.test(trimmed);
+
+  let score = 26;
+  score += Math.min(wordCount, 28) * 0.9;
+  score += hasEvidence ? 15 : -6;
+  score += hasWarrant ? 14 : -8;
+  score += hasImpact ? 13 : -6;
+  score += hasRebuttal ? 10 : 0;
+  score += hasWeighing ? 8 : 0;
+  score += hasDefinition ? 5 : 0;
+  score += hasAbsolute ? -9 : 0;
+  score += wordCount >= 22 ? 6 : -4;
+  score += wordCount > 95 ? -4 : 0;
+
+  const strongestPart = hasEvidence
+    ? "Best part: you are at least trying to ground the turn in proof."
+    : hasWarrant
+      ? "Best part: the turn has a visible mechanism instead of only a slogan."
+      : hasImpact
+        ? "Best part: you are at least pointing the judge toward consequences."
+        : hasRebuttal
+          ? "Best part: you are engaging the opponent instead of free-floating."
+          : "Best part: there is a clear claim to build from.";
+
+  let critique = "The turn is usable, but it still needs one sharper layer before it really bites.";
+  let nextFix = "Add one direct comparison line so the judge knows why your world matters more.";
+
+  if (!hasEvidence) {
+    critique = "This sounds more asserted than proven right now.";
+    nextFix = "Add one study, statistic, or real example before you send it.";
+  } else if (!hasWarrant) {
+    critique = "The claim has proof language, but the bridge to your conclusion is still thin.";
+    nextFix = "Add one because-sentence that explains how the evidence gets you to the claim.";
+  } else if (!hasImpact) {
+    critique = "The logic is forming, but the judge still needs to hear why it matters.";
+    nextFix = "Finish with the consequence: what harm, cost, or benefit follows if you are right?";
+  } else if (!hasRebuttal) {
+    critique = "This builds your offense, but it does not yet pin the other side down.";
+    nextFix = "Name the opponent's assumption in one sentence before extending your point.";
+  } else if (hasAbsolute) {
+    critique = "The sentence is punchy, but the universal wording makes it easier to crack.";
+    nextFix = "Trade the absolute language for something tighter unless you can defend every exception.";
+  } else if (score >= 82) {
+    critique = "This is a strong live turn: it has structure, consequence, and real pressure.";
+    nextFix = "Your highest-value upgrade now is to make the comparison explicit instead of implied.";
+  } else if (score >= 70) {
+    critique = "This is solid and debate-ready with one more precise layer.";
+    nextFix = "Tighten the cleanest sentence and make sure the impact comparison is explicit.";
+  }
+
+  return {
+    critique,
+    nextFix,
+    score: clampScore(score),
+    strongestPart,
+  };
+}
+
+function buildAttackWindow(
+  session: DebateSession,
+  latestOpponentMessage: string,
+): AttackWindow | null {
+  const trimmed = latestOpponentMessage.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const userTurns = session.messages.filter((message) => message.speaker === "You").length;
+  const opponentTurns = session.messages.filter(
+    (message) => message.speaker === "AI Opponent",
+  ).length;
+
+  if (userTurns === 0 || opponentTurns <= userTurns) {
+    return null;
+  }
+
+  if (!evidencePattern.test(trimmed)) {
+    return {
+      label: "Missing evidence",
+      punch: "What actual evidence proves that point instead of just repeating it more confidently?",
+      reason: "They made the claim sound settled without giving the judge anything concrete to hold on to.",
+      title: "Ask for proof",
+    };
+  }
+
+  if (!warrantPattern.test(trimmed)) {
+    return {
+      label: "Missing warrant",
+      punch: "Even if I grant that premise, how does it actually get you to your conclusion?",
+      reason: "They named a premise, but they did not explain the mechanism connecting it to the ballot.",
+      title: "Break the missing link",
+    };
+  }
+
+  if (absolutePattern.test(trimmed)) {
+    return {
+      label: "Overclaim",
+      punch: "That only works if your claim holds in every case, so why should the judge buy wording that absolute?",
+      reason: "Universal phrasing creates an easy counterexample lane and makes the turn more brittle than it sounds.",
+      title: "Punish the overclaim",
+    };
+  }
+
+  if (contestedTermPattern.test(trimmed) && !definitionPattern.test(trimmed)) {
+    return {
+      label: "Definition gap",
+      punch: "What do you mean by that key term, and why should the judge accept your version instead of mine?",
+      reason: "They are leaning on a contested word without locking down the standard behind it.",
+      title: "Force the definition",
+    };
+  }
+
+  if (!weighingPattern.test(trimmed)) {
+    return {
+      label: "Weak comparison",
+      punch: "Why does that matter more than the harm on my side, instead of just existing alongside it?",
+      reason: "They offered a point, but not a reason the judge should rank it above your best impact.",
+      title: "Win the weighing",
+    };
+  }
+
+  return {
+    label: "Soft seam",
+    punch: "Even if part of that is true, it still does not get you to a better ballot than mine.",
+    reason: "The line is more complete than most, so the best move is to concede the premise and beat it on comparison.",
+    title: "Turn the conclusion",
+  };
 }
 
 function buildLiveCoach(
@@ -234,6 +399,7 @@ export default function DebateExperience({
   initialSideChoice,
   initialTopic,
   initialCoachFocus,
+  initialLiveFeedbackMode,
 }: DebateExperienceProps) {
   const router = useRouter();
   const [session, setSession] = useState<DebateSession>(() =>
@@ -243,6 +409,7 @@ export default function DebateExperience({
       initialReplyStyle,
       initialSideChoice,
       initialTopic,
+      initialLiveFeedbackMode,
     ),
   );
   const [input, setInput] = useState("");
@@ -314,10 +481,18 @@ export default function DebateExperience({
   }
 
   const userTurns = session.messages.filter((message) => message.speaker === "You").length;
+  const latestUserTurn =
+    [...session.messages].reverse().find((message) => message.speaker === "You")?.text ?? "";
+  const latestOpponentTurn =
+    [...session.messages].reverse().find((message) => message.speaker === "AI Opponent")?.text ??
+    "";
   const opponentPersonality = getOpponentPersonalityMeta(session.opponentPersonality);
   const replyStyle = getReplyStyleMeta(session.replyStyle);
   const liveCoach = buildLiveCoach(session, input, opponentPersonality);
   const draftWordCount = countWords(input);
+  const feedbackSourceText = input.trim() ? input : latestUserTurn;
+  const turnFeedback = buildTurnFeedback(feedbackSourceText);
+  const attackWindow = buildAttackWindow(session, latestOpponentTurn);
 
   return (
     <main className="min-h-screen px-6 py-8 sm:px-8">
@@ -349,6 +524,9 @@ export default function DebateExperience({
                 </span>
                 <span className="theme-pill rounded-full border px-4 py-2">
                   Mode: {replyStyle.label}
+                </span>
+                <span className="theme-pill rounded-full border px-4 py-2">
+                  Coach: {session.liveFeedbackMode ? "Sparring" : "Standard"}
                 </span>
                 <span className="theme-pill rounded-full border px-4 py-2">
                   {userTurns} user turn{userTurns === 1 ? "" : "s"}
@@ -436,7 +614,9 @@ export default function DebateExperience({
                     Your next argument
                   </label>
                   <p className="theme-muted text-sm">
-                    Momentum read: {liveCoach.momentumRead}
+                    {session.liveFeedbackMode
+                      ? "Sparring Coach is scoring this turn live."
+                      : `Momentum read: ${liveCoach.momentumRead}`}
                   </p>
                 </div>
                 <span className="theme-pill rounded-full border px-4 py-2 text-sm">
@@ -494,6 +674,113 @@ export default function DebateExperience({
           </section>
 
           <aside className="grid gap-4">
+            {session.liveFeedbackMode ? (
+              <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+                <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                  Sparring Coach
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold">
+                  {input.trim() ? "Current draft score" : "Last turn score"}
+                </h2>
+
+                {turnFeedback ? (
+                  <div className="mt-5 grid gap-4">
+                    <div className="theme-surface rounded-[1.45rem] border p-4">
+                      <div className="flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                          <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                            Turn score
+                          </p>
+                          <p className="theme-strong mt-2 text-4xl font-semibold">
+                            {turnFeedback.score}
+                            <span className="text-lg">/100</span>
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${
+                            turnFeedback.score >= 80
+                              ? "theme-status-anchor"
+                              : turnFeedback.score >= 64
+                                ? "theme-status-developing"
+                                : "theme-status-collapse"
+                          }`}
+                        >
+                          {turnFeedback.score >= 80
+                            ? "strong"
+                            : turnFeedback.score >= 64
+                              ? "live"
+                              : "fragile"}
+                        </span>
+                      </div>
+                      <p className="theme-copy mt-4 text-sm leading-6">
+                        {turnFeedback.critique}
+                      </p>
+                    </div>
+
+                    <div className="theme-subcard rounded-[1.35rem] border p-4">
+                      <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                        Coach read
+                      </p>
+                      <p className="theme-copy mt-2 text-sm leading-6">
+                        {turnFeedback.strongestPart}
+                      </p>
+                      <p className="theme-strong mt-3 text-sm leading-6">
+                        Next fix: {turnFeedback.nextFix}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="theme-surface mt-5 rounded-[1.45rem] border p-4">
+                    <p className="theme-copy text-sm leading-6">
+                      Start typing and Sparring Coach will score the turn, flag the weakest seam,
+                      and tell you the fastest upgrade before you send it.
+                    </p>
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            {session.liveFeedbackMode ? (
+              <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+                <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                  Hardest Hit
+                </p>
+                <h2 className="mt-3 text-2xl font-semibold">Where the opponent is softest</h2>
+
+                {attackWindow ? (
+                  <div className="mt-5 grid gap-4">
+                    <div className="theme-surface rounded-[1.45rem] border p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm font-semibold">{attackWindow.title}</p>
+                        <span className="theme-status-collapse rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]">
+                          {attackWindow.label}
+                        </span>
+                      </div>
+                      <p className="theme-copy mt-4 text-sm leading-6">
+                        {attackWindow.reason}
+                      </p>
+                    </div>
+
+                    <div className="theme-subcard rounded-[1.35rem] border p-4">
+                      <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                        Best pressure line
+                      </p>
+                      <p className="theme-strong mt-2 text-sm leading-6">
+                        {attackWindow.punch}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="theme-surface mt-5 rounded-[1.45rem] border p-4">
+                    <p className="theme-copy text-sm leading-6">
+                      Once the opponent answers your first actual argument, this panel will point
+                      to the softest seam and give you the cleanest attack line.
+                    </p>
+                  </div>
+                )}
+              </section>
+            ) : null}
+
             <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
               <p className="theme-muted text-xs uppercase tracking-[0.28em]">
                 Live coach

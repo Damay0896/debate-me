@@ -36,6 +36,7 @@ const sideCopy: Record<SideChoice, string> = {
 type RecentRound = {
   active: boolean;
   analysisSummary: string | null;
+  liveFeedbackMode: boolean;
   result: "win" | "loss" | "tie" | "live";
   score: number | null;
   sessionId: string;
@@ -78,6 +79,7 @@ export default function Home() {
   const [opponentPersonality, setOpponentPersonality] =
     useState<OpponentPersonality>(DEFAULT_OPPONENT_PERSONALITY);
   const [replyStyle, setReplyStyle] = useState<ReplyStyle>(DEFAULT_REPLY_STYLE);
+  const [liveFeedbackMode, setLiveFeedbackMode] = useState(false);
   const [personalityQuery, setPersonalityQuery] = useState("");
   const [recentRounds, setRecentRounds] = useState<RecentRound[]>([]);
   const [isPending, startTransition] = useTransition();
@@ -125,6 +127,7 @@ export default function Home() {
           result: analysis?.result ?? (turnCount > 0 ? "live" : "tie"),
           score: analysis?.score ?? null,
           sessionId: session.id,
+          liveFeedbackMode: session.liveFeedbackMode,
           topic: session.topic,
           turns: turnCount,
           updatedAt: session.updatedAt,
@@ -156,6 +159,7 @@ export default function Home() {
       personality: opponentPersonality,
       session: createId("session"),
       style: replyStyle,
+      coach: liveFeedbackMode ? "1" : "0",
     });
 
     startTransition(() => {
@@ -373,6 +377,60 @@ export default function Home() {
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="max-w-2xl">
                 <p className="theme-kicker text-xs uppercase tracking-[0.28em]">
+                  Sparring Coach
+                </p>
+                <h3 className="mt-3 text-2xl font-semibold">
+                  Live turn scoring and weak-point detection
+                </h3>
+                <p className="theme-copy mt-3 text-sm leading-6">
+                  Turn this on if you want every live draft scored, critiqued in one
+                  sentence, and paired with the cleanest place to hit the opponent after
+                  they answer.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLiveFeedbackMode((current) => !current)}
+                className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${
+                  liveFeedbackMode ? "theme-option-active" : "theme-button-secondary"
+                }`}
+              >
+                {liveFeedbackMode ? "Sparring Coach on" : "Turn on Sparring Coach"}
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              <div className="theme-subcard rounded-[1.35rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                  After you type
+                </p>
+                <p className="theme-copy mt-2 text-sm leading-6">
+                  The app scores the turn live and gives one short coach critique.
+                </p>
+              </div>
+              <div className="theme-subcard rounded-[1.35rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                  After they answer
+                </p>
+                <p className="theme-copy mt-2 text-sm leading-6">
+                  You get a `hit here hardest` read on the opponent&apos;s latest point.
+                </p>
+              </div>
+              <div className="theme-subcard rounded-[1.35rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                  Best use
+                </p>
+                <p className="theme-copy mt-2 text-sm leading-6">
+                  Great for practice rounds when you want fast correction instead of only end-of-round feedback.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="theme-surface mt-8 rounded-[1.8rem] border p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="max-w-2xl">
+                <p className="theme-kicker text-xs uppercase tracking-[0.28em]">
                   Opponent scouting report
                 </p>
                 <h3 className="mt-3 text-2xl font-semibold">
@@ -486,6 +544,11 @@ export default function Home() {
                           {round.active ? (
                             <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.16em]">
                               Current session
+                            </span>
+                          ) : null}
+                          {round.liveFeedbackMode ? (
+                            <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.16em]">
+                              Sparring Coach
                             </span>
                           ) : null}
                         </div>

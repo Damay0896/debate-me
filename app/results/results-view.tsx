@@ -317,7 +317,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
       router.push(
         `/debate?session=${activeSession.id}&topic=${encodeURIComponent(
           activeSession.topic,
-        )}&side=${activeSession.userSide}&personality=${activeSession.opponentPersonality}&style=${activeSession.replyStyle}`,
+        )}&side=${activeSession.userSide}&personality=${activeSession.opponentPersonality}&style=${activeSession.replyStyle}&coach=${activeSession.liveFeedbackMode ? "1" : "0"}`,
       );
     });
   }
@@ -327,7 +327,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
       router.push(
         `/debate?session=${createId("session")}&topic=${encodeURIComponent(
           activeSession.topic,
-        )}&side=${activeSession.userSide}&personality=${activeSession.opponentPersonality}&style=${activeSession.replyStyle}&focus=${encodeURIComponent(replayFocus)}`,
+        )}&side=${activeSession.userSide}&personality=${activeSession.opponentPersonality}&style=${activeSession.replyStyle}&focus=${encodeURIComponent(replayFocus)}&coach=${activeSession.liveFeedbackMode ? "1" : "0"}`,
       );
     });
   }
@@ -343,6 +343,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
       `Verdict: ${report.verdict}`,
       `Winner confidence: ${report.winnerConfidence}%`,
       `Best next improvement: ${report.bestNextImprovement.title}`,
+      `Live coach mode: ${activeSession.liveFeedbackMode ? "Sparring Coach" : "Standard"}`,
       `Replay focus: ${replayFocus}`,
       "",
       "Rematch script:",
@@ -397,6 +398,9 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                 </span>
                 <span className="theme-pill rounded-full border px-4 py-2">
                   Mode: {replyStyle.label}
+                </span>
+                <span className="theme-pill rounded-full border px-4 py-2">
+                  Coach: {activeSession.liveFeedbackMode ? "Sparring" : "Standard"}
                 </span>
                 <span className="theme-pill rounded-full border px-4 py-2">
                   Opponent: {session.opponentSide}
