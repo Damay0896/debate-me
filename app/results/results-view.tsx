@@ -22,7 +22,6 @@ import {
   type DebateSession,
 } from "@/lib/debate";
 import {
-  loadActiveSession,
   loadAnalysis,
   loadSession,
   saveAnalysis,
@@ -44,10 +43,7 @@ function cx(...values: Array<string | false | null | undefined>) {
 }
 
 function getStoredSession(initialSessionId: string) {
-  return (
-    (initialSessionId.trim() !== "" ? loadSession(initialSessionId) : null) ??
-    loadActiveSession()
-  );
+  return initialSessionId.trim() !== "" ? loadSession(initialSessionId) : null;
 }
 
 function getFallbackAnalysis(session: DebateSession) {

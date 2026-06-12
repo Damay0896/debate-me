@@ -11,7 +11,6 @@ import {
   type DebateSession,
 } from "@/lib/debate";
 import {
-  loadActiveSession,
   loadAnalysis,
   loadSession,
 } from "@/lib/debate-storage";
@@ -22,10 +21,7 @@ type ResultsExportViewProps = {
 };
 
 function getStoredSession(initialSessionId: string) {
-  return (
-    (initialSessionId.trim() !== "" ? loadSession(initialSessionId) : null) ??
-    loadActiveSession()
-  );
+  return initialSessionId.trim() !== "" ? loadSession(initialSessionId) : null;
 }
 
 function subscribeToHydration() {
