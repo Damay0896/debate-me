@@ -131,32 +131,30 @@ export default function ThemeToggle() {
   }
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-50">
-      <button
-        type="button"
-        onClick={toggleTheme}
-        className="theme-toggle pointer-events-auto flex items-center gap-3 rounded-full border px-4 py-3 backdrop-blur-xl"
-        aria-label={
-          mounted
-            ? `Switch to ${theme === "dark" ? "light" : "dark"} mode`
-            : "Toggle theme"
-        }
-      >
-        <span className="theme-toggle-icon flex h-9 w-9 items-center justify-center rounded-full border">
-          <span className="theme-accent">
-            {mounted && theme === "light" ? <SunIcon /> : <MoonIcon />}
-          </span>
+    <button
+      type="button"
+      onClick={toggleTheme}
+      className="theme-toggle inline-flex items-center gap-3 rounded-full border px-4 py-3 backdrop-blur-xl"
+      aria-label={
+        mounted
+          ? `Switch to ${theme === "dark" ? "light" : "dark"} mode`
+          : "Toggle theme"
+      }
+    >
+      <span className="theme-toggle-icon flex h-9 w-9 items-center justify-center rounded-full border">
+        <span className="theme-accent">
+          {mounted && theme === "light" ? <SunIcon /> : <MoonIcon />}
         </span>
+      </span>
 
-        <span className="flex flex-col items-start leading-none">
-          <span className="theme-muted text-[11px] uppercase tracking-[0.28em]">
-            Theme
-          </span>
-          <span className="mt-1 text-sm font-semibold">
-            {mounted ? (theme === "dark" ? "Dark" : "Light") : "Theme"}
-          </span>
+      <span className="flex flex-col items-start leading-none">
+        <span className="theme-muted text-[11px] uppercase tracking-[0.28em]">
+          Theme
         </span>
-      </button>
-    </div>
+        <span className="mt-1 text-sm font-semibold">
+          {mounted ? (theme === "dark" ? "Dark" : "Light") : "Theme"}
+        </span>
+      </span>
+    </button>
   );
 }

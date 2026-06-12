@@ -24,8 +24,14 @@ export default function RootLayout({
           {THEME_INIT_SCRIPT}
         </Script>
         <style id="theme-overrides">{THEME_STYLE_BLOCK}</style>
-        <ThemeToggle />
-        {children}
+        <div className="min-h-full">
+          <div className="app-topbar relative z-40">
+            <div className="mx-auto flex max-w-6xl justify-end px-6 pt-4 sm:px-8">
+              <ThemeToggle />
+            </div>
+          </div>
+          {children}
+        </div>
       </body>
     </html>
   );

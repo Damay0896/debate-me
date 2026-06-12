@@ -407,20 +407,22 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
         </header>
 
         <nav className="theme-card report-nav sticky top-4 z-20 rounded-[1.6rem] border px-3 py-3 backdrop-blur">
-          <div className="report-nav-scroll flex items-center gap-2 overflow-x-auto pb-1">
-            {reportSections.map((section) => (
-              <a
-                key={section.href}
-                href={section.href}
-                className="report-nav-link shrink-0 rounded-full border px-4 py-2 text-sm font-medium"
-              >
-                {section.label}
-              </a>
-            ))}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <div className="report-nav-scroll flex min-w-0 items-center gap-2 overflow-x-auto pb-1">
+              {reportSections.map((section) => (
+                <a
+                  key={section.href}
+                  href={section.href}
+                  className="report-nav-link shrink-0 rounded-full border px-4 py-2 text-sm font-medium"
+                >
+                  {section.label}
+                </a>
+              ))}
+            </div>
             <button
               type="button"
               onClick={exportFeedbackPdf}
-              className="theme-button-secondary ml-2 inline-flex shrink-0 items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold transition sm:ml-auto"
+              className="theme-button-secondary inline-flex w-full shrink-0 items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold transition sm:w-auto lg:ml-auto"
             >
               Export PDF
             </button>

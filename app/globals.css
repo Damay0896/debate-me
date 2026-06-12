@@ -747,6 +747,10 @@ html[data-theme="light"] .theme-accent-chip {
   content: "\201C";
 }
 
+.export-mode .app-topbar {
+  display: none;
+}
+
 .export-mode .theme-toggle {
   display: none;
 }
