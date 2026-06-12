@@ -259,7 +259,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     shouldRefreshAnalysis && remoteAnalysis.sessionKey !== sessionKey;
   const report = liveAnalysis ?? reportFromStorage ?? getFallbackAnalysis(session);
   const userMessages = session.messages.filter((message) => message.speaker === "You");
-  const transcriptPreview = session.messages.slice(-4);
+  const transcriptPreview = session.messages.slice(-6);
   const totalWords = userMessages.reduce(
     (count, message) => count + message.text.split(/\s+/).filter(Boolean).length,
     0,
@@ -399,12 +399,12 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
         </header>
 
         <nav className="theme-card report-nav sticky top-4 z-20 rounded-[1.6rem] border px-3 py-3 backdrop-blur">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="report-nav-scroll flex items-center gap-2 overflow-x-auto pb-1">
             {reportSections.map((section) => (
               <a
                 key={section.href}
                 href={section.href}
-                className="report-nav-link rounded-full border px-4 py-2 text-sm font-medium"
+                className="report-nav-link shrink-0 rounded-full border px-4 py-2 text-sm font-medium"
               >
                 {section.label}
               </a>
@@ -412,7 +412,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
             <button
               type="button"
               onClick={exportFeedbackPdf}
-              className="theme-button-secondary ml-auto inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold transition"
+              className="theme-button-secondary ml-2 inline-flex shrink-0 items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold transition sm:ml-auto"
             >
               Export PDF
             </button>
@@ -681,7 +681,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
           </section>
         </section>
 
-        <ResultsReportPanels analysis={report} />
+        <ResultsReportPanels analysis={report} session={session} />
 
         <section
           id="transcript"
@@ -700,24 +700,38 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
             </p>
           </div>
 
-          <div className="report-transcript-scroll mt-6 space-y-3">
-            {transcriptPreview.map((message) => (
-              <article
-                key={message.id}
-                className={cx(
-                  "rounded-[1.55rem] border p-5",
-                  message.speaker === "You" ? "theme-chat-user" : "theme-chat-opponent",
-                )}
-              >
-                <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
-                  {message.speaker}
-                </p>
-                <p className="theme-strong mt-3 text-base leading-7">
-                  {message.text}
-                </p>
-              </article>
-            ))}
-          </div>
+          {transcriptPreview.length > 0 ? (
+            <div className="report-transcript-scroll mt-6 space-y-3">
+              {transcriptPreview.map((message) => (
+                <article
+                  key={message.id}
+                  className={cx(
+                    "rounded-[1.55rem] border p-5",
+                    message.speaker === "You"
+                      ? "theme-chat-user"
+                      : "theme-chat-opponent",
+                  )}
+                >
+                  <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
+                    {message.speaker}
+                  </p>
+                  <p className="theme-strong mt-3 break-words text-base leading-7">
+                    {message.text}
+                  </p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="theme-surface mt-6 rounded-[1.55rem] border p-5">
+              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                Transcript unavailable
+              </p>
+              <p className="theme-copy mt-3 text-sm leading-6">
+                This report still rendered from the saved analysis, but there was no
+                local transcript tail available to show here.
+              </p>
+            </div>
+          )}
         </section>
       </div>
     </main>

@@ -8,12 +8,15 @@ import type {
   CollapsePoint,
   DebateAnalysis,
   DebateMetric,
+  DebateSession,
   FallacyFlag,
   MissedOpportunity,
   MomentumBeat,
   OpponentCaseReview,
   TranscriptReceipt,
 } from "@/lib/debate";
+
+import { buildReportInsights } from "./report-insights";
 
 const metricGlow: Record<DebateMetric["key"], string> = {
   logic: "from-sky-300 via-cyan-300 to-teal-200",
@@ -41,6 +44,12 @@ const collapseSeverityStyles: Record<CollapsePoint["severity"], string> = {
   medium: "theme-flag-medium",
   high: "theme-flag-high",
 };
+
+const toneStyles = {
+  accent: "theme-status-anchor",
+  neutral: "theme-status-developing",
+  warning: "theme-status-collapse",
+} as const;
 
 function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
@@ -85,8 +94,10 @@ function Panel({
       className="theme-card report-panel-shell report-rise scroll-mt-28 self-start rounded-[2rem] border p-6 shadow-xl backdrop-blur"
     >
       <p className="theme-muted text-xs uppercase tracking-[0.32em]">{eyebrow}</p>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <h2 className="theme-strong text-2xl font-semibold">{title}</h2>
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <h2 className="theme-strong max-w-2xl text-2xl font-semibold text-balance">
+          {title}
+        </h2>
         <p className="theme-muted max-w-xl text-sm leading-6">{description}</p>
       </div>
       <div className="report-section-rule mt-5" />
@@ -104,7 +115,7 @@ function SkillBreakdown({ metrics }: { metrics: DebateMetric[] }) {
   }, []);
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid gap-4 2xl:grid-cols-2">
       {metrics.map((metric, index) => (
         <article
           key={metric.key}
@@ -151,9 +162,12 @@ function SkillBreakdown({ metrics }: { metrics: DebateMetric[] }) {
 
 function MomentumPanel({ momentum }: { momentum: MomentumBeat[] }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid gap-3 2xl:grid-cols-2">
       {momentum.map((beat, index) => (
-        <article key={`${beat.label}-${index}`} className="theme-surface rounded-[1.5rem] border p-4">
+        <article
+          key={`${beat.label}-${index}`}
+          className="theme-surface rounded-[1.5rem] border p-4"
+        >
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="theme-accent-chip flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold">
@@ -189,10 +203,12 @@ function CoachFeedback({
   nextSteps,
 }: Pick<DebateAnalysis, "strengths" | "weaknesses" | "nextSteps">) {
   return (
-    <div className="grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+    <div className="grid gap-4 2xl:grid-cols-[0.95fr_1.05fr]">
       <div className="space-y-4">
         <article className="theme-surface rounded-[1.55rem] border p-5">
-          <p className="theme-muted text-xs uppercase tracking-[0.24em]">Keep doing this</p>
+          <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+            Keep doing this
+          </p>
           <ul className="mt-4 space-y-3">
             {strengths.map((item) => (
               <li key={item} className="report-list-item">
@@ -204,7 +220,9 @@ function CoachFeedback({
         </article>
 
         <article className="theme-surface rounded-[1.55rem] border p-5">
-          <p className="theme-muted text-xs uppercase tracking-[0.24em]">Still leaking here</p>
+          <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+            Still leaking here
+          </p>
           <ul className="mt-4 space-y-3">
             {weaknesses.map((item) => (
               <li key={item} className="report-list-item">
@@ -217,14 +235,15 @@ function CoachFeedback({
       </div>
 
       <article className="theme-surface rounded-[1.7rem] border p-5">
-        <p className="theme-muted text-xs uppercase tracking-[0.24em]">Coach feedback</p>
-        <h3 className="mt-3 text-xl font-semibold">What to fix in the very next round</h3>
+        <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+          Coach feedback
+        </p>
+        <h3 className="mt-3 text-xl font-semibold">
+          What to fix in the very next round
+        </h3>
         <div className="mt-5 space-y-3">
           {nextSteps.map((item, index) => (
-            <div
-              key={item}
-              className="theme-subcard rounded-[1.3rem] border p-4"
-            >
+            <div key={item} className="theme-subcard rounded-[1.3rem] border p-4">
               <div className="flex items-center gap-3">
                 <div className="theme-accent-chip flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold">
                   {index + 1}
@@ -247,19 +266,263 @@ function BestNextImprovementCard({ analysis }: { analysis: DebateAnalysis }) {
 
   return (
     <article className="theme-surface report-feature-card rounded-[1.75rem] border p-5">
-      <p className="theme-muted text-xs uppercase tracking-[0.24em]">Highest-value fix</p>
+      <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+        Highest-value fix
+      </p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <span className="theme-accent-chip rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
           {bestNextImprovement.skill}
         </span>
         <h3 className="text-2xl font-semibold">{bestNextImprovement.title}</h3>
       </div>
-      <p className="theme-copy mt-4 text-base leading-7">{bestNextImprovement.reason}</p>
+      <p className="theme-copy mt-4 text-base leading-7">
+        {bestNextImprovement.reason}
+      </p>
       <div className="theme-subcard mt-5 rounded-[1.35rem] border p-4">
-        <p className="theme-muted text-xs uppercase tracking-[0.24em]">Drill for the replay</p>
-        <p className="theme-strong mt-2 text-sm leading-6">{bestNextImprovement.drill}</p>
+        <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+          Drill for the replay
+        </p>
+        <p className="theme-strong mt-2 text-sm leading-6">
+          {bestNextImprovement.drill}
+        </p>
       </div>
     </article>
+  );
+}
+
+function DebatePatternRadar({
+  patternStats,
+}: {
+  patternStats: ReturnType<typeof buildReportInsights>["patternStats"];
+}) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {patternStats.map((stat) => (
+        <article
+          key={stat.label}
+          className="theme-surface rounded-[1.45rem] border p-4"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+              {stat.label}
+            </p>
+            <span
+              className={cx(
+                "rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]",
+                toneStyles[stat.tone],
+              )}
+            >
+              {stat.value}
+            </span>
+          </div>
+          <p className="theme-copy mt-3 text-sm leading-6">{stat.note}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function DebateProfilePanel({
+  analysis,
+  profileSignals,
+}: {
+  analysis: DebateAnalysis;
+  profileSignals: ReturnType<typeof buildReportInsights>["profileSignals"];
+}) {
+  return (
+    <div className="grid gap-4">
+      <BestNextImprovementCard analysis={analysis} />
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {profileSignals.map((signal) => (
+          <article
+            key={signal.label}
+            className="theme-surface rounded-[1.45rem] border p-4"
+          >
+            <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+              {signal.label}
+            </p>
+            <p className="theme-strong mt-3 text-lg font-semibold">
+              {signal.value}
+            </p>
+            <p className="theme-copy mt-2 text-sm leading-6">{signal.note}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function QuoteWorkshop({
+  quoteInsights,
+}: {
+  quoteInsights: ReturnType<typeof buildReportInsights>["quoteInsights"];
+}) {
+  return (
+    <div className="grid gap-4">
+      {quoteInsights.map((item) => (
+        <article
+          key={item.label}
+          className="theme-surface report-feature-card rounded-[1.6rem] border p-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                {item.label}
+              </p>
+              <p className="theme-strong mt-2 text-sm font-semibold uppercase tracking-[0.18em]">
+                {item.speaker}
+              </p>
+            </div>
+            <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.16em]">
+              Quote lab
+            </span>
+          </div>
+
+          <blockquote className="report-quote mt-4 rounded-[1.45rem] border px-4 py-4 text-base leading-7 break-words">
+            {item.quote}
+          </blockquote>
+
+          <p className="theme-copy mt-4 text-sm leading-6">{item.note}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function JudgeBallotPanel({
+  ballotCallouts,
+}: {
+  ballotCallouts: ReturnType<typeof buildReportInsights>["ballotCallouts"];
+}) {
+  return (
+    <div className="grid gap-3">
+      {ballotCallouts.map((item) => (
+        <article
+          key={item.label}
+          className="theme-surface rounded-[1.45rem] border p-4"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+              {item.label}
+            </p>
+            <span
+              className={cx(
+                "rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]",
+                toneStyles[item.tone],
+              )}
+            >
+              Coach call
+            </span>
+          </div>
+          <p className="theme-strong mt-3 text-sm leading-6">{item.value}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function ReplayBlueprintPanel({
+  replaySteps,
+}: {
+  replaySteps: ReturnType<typeof buildReportInsights>["replaySteps"];
+}) {
+  return (
+    <div className="grid gap-3">
+      {replaySteps.map((step, index) => (
+        <article
+          key={step.label}
+          className="theme-surface rounded-[1.5rem] border p-5"
+        >
+          <div className="flex items-center gap-3">
+            <div className="theme-accent-chip flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold">
+              {index + 1}
+            </div>
+            <div>
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                {step.label}
+              </p>
+              <p className="theme-strong mt-1 text-lg font-semibold">
+                {step.line}
+              </p>
+            </div>
+          </div>
+          <p className="theme-copy mt-4 text-sm leading-6">{step.note}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function CrossfireDrillPanel({
+  drillQuestions,
+}: {
+  drillQuestions: ReturnType<typeof buildReportInsights>["drillQuestions"];
+}) {
+  return (
+    <div className="grid gap-4">
+      {drillQuestions.map((item) => (
+        <article
+          key={item.title}
+          className="theme-surface rounded-[1.55rem] border p-5"
+        >
+          <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+            {item.title}
+          </p>
+          <p className="theme-strong mt-3 text-base leading-7">{item.prompt}</p>
+          <div className="theme-subcard mt-4 rounded-[1.2rem] border p-4">
+            <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+              Best answer you want ready
+            </p>
+            <p className="theme-copy mt-2 text-sm leading-6">{item.answer}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function CaseRepairPanel({
+  caseRepairs,
+  weakestMetricLabel,
+}: {
+  caseRepairs: ReturnType<typeof buildReportInsights>["caseRepairs"];
+  weakestMetricLabel: string | null;
+}) {
+  return (
+    <div className="grid gap-4">
+      {caseRepairs.map((item, index) => (
+        <article
+          key={`${item.title}-${index}`}
+          className="theme-surface rounded-[1.6rem] border p-5"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                {item.title}
+              </p>
+              <p className="theme-strong mt-2 text-lg font-semibold">
+                Structural weakness
+              </p>
+            </div>
+            {weakestMetricLabel ? (
+              <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.16em]">
+                Protect {weakestMetricLabel}
+              </span>
+            ) : null}
+          </div>
+
+          <p className="theme-copy mt-4 text-sm leading-6">{item.weakness}</p>
+
+          <div className="theme-subcard mt-4 rounded-[1.2rem] border p-4">
+            <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+              Best repair
+            </p>
+            <p className="theme-strong mt-2 text-sm leading-6">{item.fix}</p>
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -293,7 +556,7 @@ function MapNodeCard({
   } as const;
 
   return (
-    <article className={cx("rounded-[1.4rem] border p-4", toneStyles[tone])}>
+    <article className={cx("rounded-[1.35rem] border p-4", toneStyles[tone])}>
       <div className="flex items-start justify-between gap-3">
         <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-[var(--diagram-muted)]">
           {eyebrow}
@@ -302,10 +565,32 @@ function MapNodeCard({
           {weight}
         </span>
       </div>
-      <p className="mt-3 text-sm font-medium leading-6 text-[var(--diagram-label)]">
+      <p className="mt-3 break-words text-sm font-medium leading-6 text-[var(--diagram-label)]">
         {label}
       </p>
     </article>
+  );
+}
+
+function MapStage({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="theme-subcard report-map-stage rounded-[1.55rem] border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="theme-muted text-xs uppercase tracking-[0.22em]">{eyebrow}</p>
+          <p className="theme-strong mt-2 text-lg font-semibold">{title}</p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3">{children}</div>
+    </div>
   );
 }
 
@@ -318,21 +603,18 @@ function ArgumentMapDiagram({ argumentMap }: { argumentMap: ArgumentMap }) {
     .sort((left, right) => left.row - right.row);
   const claimNode =
     argumentMap.nodes.find((node) => node.kind === "claim") ?? argumentMap.nodes[0];
-  const rightNodes = argumentMap.nodes
-    .filter((node) => node.kind === "impact" || node.kind === "counter")
+  const impactNodes = argumentMap.nodes
+    .filter((node) => node.kind === "impact")
+    .sort((left, right) => left.row - right.row);
+  const counterNodes = argumentMap.nodes
+    .filter((node) => node.kind === "counter")
     .sort((left, right) => left.row - right.row);
 
   return (
     <div className="theme-surface report-diagram-shell rounded-[1.7rem] border p-5">
-      <div className="report-map-board">
-        <div className="report-map-column">
-          <div className="flex items-center justify-between gap-3">
-            <p className="theme-muted text-xs uppercase tracking-[0.26em]">Premises</p>
-            <span className="theme-subcard rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]">
-              supports
-            </span>
-          </div>
-          <div className="grid gap-3">
+      <div className="report-map-flow">
+        <MapStage eyebrow="Step 1" title="Premises and assumptions">
+          <>
             {premiseNodes.map((node) => (
               <MapNodeCard
                 key={node.id}
@@ -351,20 +633,12 @@ function ArgumentMapDiagram({ argumentMap }: { argumentMap: ArgumentMap }) {
                 tone="assumption"
               />
             ))}
-          </div>
-        </div>
+          </>
+        </MapStage>
 
-        <div className="report-map-connector hidden xl:flex">
-          <span className="report-map-arrow">Premises -&gt; claim</span>
-        </div>
+        <div className="report-map-step">Supports</div>
 
-        <div className="report-map-column">
-          <div className="flex items-center justify-between gap-3">
-            <p className="theme-muted text-xs uppercase tracking-[0.26em]">Core claim</p>
-            <span className="theme-subcard rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]">
-              center
-            </span>
-          </div>
+        <MapStage eyebrow="Step 2" title="Core claim">
           {claimNode ? (
             <MapNodeCard
               label={claimNode.label}
@@ -373,33 +647,39 @@ function ArgumentMapDiagram({ argumentMap }: { argumentMap: ArgumentMap }) {
               tone="claim"
             />
           ) : null}
-        </div>
+        </MapStage>
 
-        <div className="report-map-connector hidden xl:flex">
-          <span className="report-map-arrow">Claim -&gt; impact / counter</span>
-        </div>
+        <div className="report-map-step">Creates</div>
 
-        <div className="report-map-column">
-          <div className="flex items-center justify-between gap-3">
-            <p className="theme-muted text-xs uppercase tracking-[0.26em]">
-              Impact and counter
-            </p>
-            <span className="theme-subcard rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]">
-              pressure
-            </span>
-          </div>
-          <div className="grid gap-3">
-            {rightNodes.map((node) => (
+        <MapStage eyebrow="Step 3" title="Impact path">
+          <>
+            {impactNodes.map((node) => (
               <MapNodeCard
                 key={node.id}
                 label={node.label}
-                eyebrow={node.kind === "impact" ? "Impact" : "Opponent counter"}
+                eyebrow="Impact"
                 weight={node.weight}
-                tone={node.kind}
+                tone="impact"
               />
             ))}
-          </div>
-        </div>
+          </>
+        </MapStage>
+
+        <div className="report-map-step">Meets</div>
+
+        <MapStage eyebrow="Step 4" title="Opponent counter">
+          <>
+            {counterNodes.map((node) => (
+              <MapNodeCard
+                key={node.id}
+                label={node.label}
+                eyebrow="Counter"
+                weight={node.weight}
+                tone="counter"
+              />
+            ))}
+          </>
+        </MapStage>
       </div>
 
       <div className="mt-5 flex flex-wrap gap-3 text-xs">
@@ -434,7 +714,7 @@ function TranscriptReceipts({
   receipts: TranscriptReceipt[];
 }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="grid gap-4 2xl:grid-cols-2">
       {receipts.map((receipt) => (
         <article
           key={receipt.id}
@@ -454,7 +734,7 @@ function TranscriptReceipts({
             </span>
           </div>
 
-          <blockquote className="report-quote mt-4 rounded-[1.45rem] border px-4 py-4 text-base leading-7">
+          <blockquote className="report-quote mt-4 rounded-[1.45rem] border px-4 py-4 text-base leading-7 break-words">
             {receipt.quote}
           </blockquote>
 
@@ -463,7 +743,9 @@ function TranscriptReceipts({
               <p className="theme-muted text-xs uppercase tracking-[0.22em]">
                 Why it mattered
               </p>
-              <p className="theme-copy mt-2 text-sm leading-6">{receipt.diagnosis}</p>
+              <p className="theme-copy mt-2 text-sm leading-6">
+                {receipt.diagnosis}
+              </p>
             </div>
             <div className="theme-subcard rounded-[1.2rem] border p-4">
               <p className="theme-muted text-xs uppercase tracking-[0.22em]">
@@ -488,21 +770,25 @@ function OpponentCaseCard({
       <p className="theme-muted text-xs uppercase tracking-[0.24em]">
         Opponent&apos;s strongest part
       </p>
-      <h3 className="mt-3 text-2xl font-semibold">
+      <h3 className="mt-3 break-words text-2xl font-semibold">
         {opponentCaseReview.strongestPoint}
       </h3>
-      <blockquote className="report-quote mt-5 rounded-[1.45rem] border px-4 py-4 text-base leading-7">
+      <blockquote className="report-quote mt-5 rounded-[1.45rem] border px-4 py-4 text-base leading-7 break-words">
         {opponentCaseReview.strongestQuote}
       </blockquote>
       <div className="mt-4 grid gap-3">
         <div className="theme-subcard rounded-[1.25rem] border p-4">
-          <p className="theme-muted text-xs uppercase tracking-[0.22em]">Why it landed</p>
+          <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+            Why it landed
+          </p>
           <p className="theme-copy mt-2 text-sm leading-6">
             {opponentCaseReview.whyItWorked}
           </p>
         </div>
         <div className="theme-subcard rounded-[1.25rem] border p-4">
-          <p className="theme-muted text-xs uppercase tracking-[0.22em]">Best counter</p>
+          <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+            Best counter
+          </p>
           <p className="theme-strong mt-2 text-sm leading-6">
             {opponentCaseReview.bestCounter}
           </p>
@@ -530,7 +816,9 @@ function MissedOpportunitiesList({
             </div>
             <div>
               <p className="theme-strong text-lg font-semibold">{item.title}</p>
-              <p className="theme-copy mt-2 text-sm leading-6">{item.missedArgument}</p>
+              <p className="theme-copy mt-2 text-sm leading-6">
+                {item.missedArgument}
+              </p>
             </div>
           </div>
 
@@ -560,13 +848,20 @@ function MissedOpportunitiesList({
 
 function PremiseClaimStacks({ frames }: { frames: ArgumentFrame[] }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="grid gap-4">
       {frames.map((frame) => (
-        <article key={frame.id} className="theme-surface rounded-[1.7rem] border p-5">
+        <article
+          key={frame.id}
+          className="theme-surface rounded-[1.7rem] border p-5"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="theme-muted text-sm uppercase tracking-[0.2em]">{frame.title}</p>
-              <p className="theme-strong mt-3 text-lg font-medium leading-7">{frame.claim}</p>
+              <p className="theme-muted text-sm uppercase tracking-[0.2em]">
+                {frame.title}
+              </p>
+              <p className="theme-strong mt-3 text-lg font-medium leading-7">
+                {frame.claim}
+              </p>
             </div>
             <span
               className={cx(
@@ -579,7 +874,9 @@ function PremiseClaimStacks({ frames }: { frames: ArgumentFrame[] }) {
           </div>
 
           <div className="theme-subcard mt-5 rounded-[1.35rem] border p-4">
-            <p className="theme-muted text-xs uppercase tracking-[0.24em]">Premises</p>
+            <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+              Premises
+            </p>
             <ul className="mt-3 space-y-2">
               {frame.premises.map((premise) => (
                 <li key={premise} className="report-list-item">
@@ -592,16 +889,24 @@ function PremiseClaimStacks({ frames }: { frames: ArgumentFrame[] }) {
 
           <div className="mt-4 grid gap-3">
             <div className="theme-subcard rounded-[1.25rem] border p-4">
-              <p className="theme-muted text-xs uppercase tracking-[0.24em]">Warrant</p>
+              <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                Warrant
+              </p>
               <p className="theme-copy mt-2 text-sm leading-6">{frame.warrant}</p>
             </div>
             <div className="theme-subcard rounded-[1.25rem] border p-4">
-              <p className="theme-muted text-xs uppercase tracking-[0.24em]">Impact</p>
+              <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                Impact
+              </p>
               <p className="theme-copy mt-2 text-sm leading-6">{frame.impact}</p>
             </div>
             <div className="theme-subcard rounded-[1.25rem] border p-4">
-              <p className="theme-muted text-xs uppercase tracking-[0.24em]">Weak point</p>
-              <p className="theme-copy mt-2 text-sm leading-6">{frame.vulnerability}</p>
+              <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                Weak point
+              </p>
+              <p className="theme-copy mt-2 text-sm leading-6">
+                {frame.vulnerability}
+              </p>
             </div>
           </div>
         </article>
@@ -612,9 +917,12 @@ function PremiseClaimStacks({ frames }: { frames: ArgumentFrame[] }) {
 
 function LogicalWeaknessCards({ fallacies }: { fallacies: FallacyFlag[] }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid gap-4 2xl:grid-cols-2">
       {fallacies.map((flag) => (
-        <article key={`${flag.name}-${flag.evidence}`} className="theme-surface rounded-[1.5rem] border p-5">
+        <article
+          key={`${flag.name}-${flag.evidence}`}
+          className="theme-surface rounded-[1.5rem] border p-5"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <h3 className="theme-strong text-lg font-medium">{flag.name}</h3>
             <span
@@ -628,7 +936,9 @@ function LogicalWeaknessCards({ fallacies }: { fallacies: FallacyFlag[] }) {
           </div>
           <p className="theme-copy mt-3 text-sm leading-6">{flag.description}</p>
           <div className="theme-subcard mt-4 rounded-[1.2rem] border p-4">
-            <p className="theme-muted text-xs uppercase tracking-[0.22em]">Where it shows up</p>
+            <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+              Where it shows up
+            </p>
             <p className="theme-copy mt-2 text-sm leading-6">{flag.evidence}</p>
           </div>
         </article>
@@ -639,9 +949,12 @@ function LogicalWeaknessCards({ fallacies }: { fallacies: FallacyFlag[] }) {
 
 function PressureCards({ collapsePoints }: { collapsePoints: CollapsePoint[] }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
+    <div className="grid gap-4 2xl:grid-cols-2">
       {collapsePoints.map((point, index) => (
-        <article key={`${point.title}-${point.trigger}`} className="theme-surface rounded-[1.5rem] border p-5">
+        <article
+          key={`${point.title}-${point.trigger}`}
+          className="theme-surface rounded-[1.5rem] border p-5"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="theme-accent-chip flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold">
@@ -661,15 +974,23 @@ function PressureCards({ collapsePoints }: { collapsePoints: CollapsePoint[] }) 
 
           <div className="mt-4 grid gap-3">
             <div className="theme-subcard rounded-[1.2rem] border p-4">
-              <p className="theme-muted text-xs uppercase tracking-[0.22em]">Likely attack</p>
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Likely attack
+              </p>
               <p className="theme-copy mt-2 text-sm leading-6">{point.trigger}</p>
             </div>
             <div className="theme-subcard rounded-[1.2rem] border p-4">
-              <p className="theme-muted text-xs uppercase tracking-[0.22em]">Why it lands</p>
-              <p className="theme-copy mt-2 text-sm leading-6">{point.whyItBreaks}</p>
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Why it lands
+              </p>
+              <p className="theme-copy mt-2 text-sm leading-6">
+                {point.whyItBreaks}
+              </p>
             </div>
             <div className="theme-subcard rounded-[1.2rem] border p-4">
-              <p className="theme-muted text-xs uppercase tracking-[0.22em]">One-sentence fix</p>
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                One-sentence fix
+              </p>
               <p className="theme-strong mt-2 text-sm leading-6">{point.repair}</p>
             </div>
           </div>
@@ -679,20 +1000,38 @@ function PressureCards({ collapsePoints }: { collapsePoints: CollapsePoint[] }) 
   );
 }
 
-export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) {
+export function ResultsReportPanels({
+  analysis,
+  session,
+}: {
+  analysis: DebateAnalysis;
+  session: DebateSession;
+}) {
+  const insights = buildReportInsights(session, analysis);
+
   return (
     <div className="grid gap-6">
       <section
         id="receipts"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-2 xl:items-start"
       >
-        <Panel
-          eyebrow="Transcript Receipts"
-          title="What the judge actually heard"
-          description="These are the exact moments that helped you, hurt you, or left an upgrade sitting on the table."
-        >
-          <TranscriptReceipts receipts={analysis.transcriptReceipts} />
-        </Panel>
+        <div className="grid gap-6 self-start">
+          <Panel
+            eyebrow="Transcript Receipts"
+            title="What the judge actually heard"
+            description="These are the exact moments that helped you, hurt you, or left an upgrade sitting on the table."
+          >
+            <TranscriptReceipts receipts={analysis.transcriptReceipts} />
+          </Panel>
+
+          <Panel
+            eyebrow="Quote Lab"
+            title="The lines to keep, punish, and rewrite"
+            description="A premium report should not just summarize the round. It should show you the exact sentences carrying the real weight."
+          >
+            <QuoteWorkshop quoteInsights={insights.quoteInsights} />
+          </Panel>
+        </div>
 
         <div className="grid gap-6 self-start">
           <Panel
@@ -715,17 +1054,27 @@ export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) 
 
       <section
         id="skills"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-2 xl:items-start"
       >
-        <Panel
-          eyebrow="Skill Breakdown"
-          title="Seven-skill scorecard"
-          description="This replaces the one-number read with a coach-style breakdown of the exact skills deciding your round."
-        >
-          <SkillBreakdown metrics={analysis.metrics} />
-        </Panel>
+        <div className="grid gap-6 self-start">
+          <Panel
+            eyebrow="Skill Breakdown"
+            title="Seven-skill scorecard"
+            description="This replaces the one-number read with a coach-style breakdown of the exact skills deciding your round."
+          >
+            <SkillBreakdown metrics={analysis.metrics} />
+          </Panel>
 
-        <div className="grid gap-6">
+          <Panel
+            eyebrow="Speech Pattern Radar"
+            title="How your debate habits actually showed up"
+            description="This is the practical pattern read: evidence use, clash frequency, weighing, definitions, absolutism, and turn density."
+          >
+            <DebatePatternRadar patternStats={insights.patternStats} />
+          </Panel>
+        </div>
+
+        <div className="grid gap-6 self-start">
           <Panel
             eyebrow="Round Story"
             title="How the round rose or sagged"
@@ -735,68 +1084,114 @@ export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) 
           </Panel>
 
           <Panel
-            eyebrow="Best Next Improvement"
-            title="The single highest-value fix"
-            description="If you improve only one thing before the next debate, make it this."
+            eyebrow="Debate DNA"
+            title="Your round identity and next-level focus"
+            description="This gives the premium-profile read: what kind of debater you looked like in this round, and what that means for the replay."
           >
-            <BestNextImprovementCard analysis={analysis} />
+            <DebateProfilePanel
+              analysis={analysis}
+              profileSignals={insights.profileSignals}
+            />
           </Panel>
         </div>
       </section>
 
       <section
         id="coach"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.02fr_0.98fr] xl:items-start"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-2 xl:items-start"
       >
-        <Panel
-          eyebrow="Coach Feedback"
-          title="Actionable coaching, not generic criticism"
-          description="What you should keep, what is still leaking, and what to deliberately fix on the replay."
-        >
-          <CoachFeedback
-            strengths={analysis.strengths}
-            weaknesses={analysis.weaknesses}
-            nextSteps={analysis.nextSteps}
-          />
-        </Panel>
+        <div className="grid gap-6 self-start">
+          <Panel
+            eyebrow="Coach Feedback"
+            title="Actionable coaching, not generic criticism"
+            description="What you should keep, what is still leaking, and what to deliberately fix on the replay."
+          >
+            <CoachFeedback
+              strengths={analysis.strengths}
+              weaknesses={analysis.weaknesses}
+              nextSteps={analysis.nextSteps}
+            />
+          </Panel>
 
-        <Panel
-          eyebrow="Pressure Test"
-          title="The 3 fastest attacks against your case"
-          description="These are the easiest pressure points an opponent can hit and the exact one-line fix that patches each one."
-        >
-          <PressureCards collapsePoints={analysis.collapsePoints} />
-        </Panel>
+          <Panel
+            eyebrow="Judge Ballot"
+            title="What a sharp judge would actually write down"
+            description="This is the ballot-language version of the round: why it broke the way it did, what decided it, and what flips the call."
+          >
+            <JudgeBallotPanel ballotCallouts={insights.ballotCallouts} />
+          </Panel>
+        </div>
+
+        <div className="grid gap-6 self-start">
+          <Panel
+            eyebrow="Pressure Test"
+            title="The fastest attacks against your case"
+            description="These are the easiest pressure points an opponent can hit and the exact one-line fix that patches each one."
+          >
+            <PressureCards collapsePoints={analysis.collapsePoints} />
+          </Panel>
+
+          <Panel
+            eyebrow="Replay Blueprint"
+            title="What to say differently next time"
+            description="This turns the report into a practical rematch plan: how to open, how to answer pressure, and how to close with intent."
+          >
+            <ReplayBlueprintPanel replaySteps={insights.replaySteps} />
+          </Panel>
+        </div>
       </section>
 
       <section
         id="map"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-2 xl:items-start"
       >
-        <Panel
-          eyebrow="Argument Map"
-          title={analysis.argumentMap.headline}
-          description="Premises flow into the core claim, which drives the impact, while unsupported assumptions are highlighted separately."
-        >
-          <ArgumentMapDiagram argumentMap={analysis.argumentMap} />
-        </Panel>
+        <div className="grid gap-6 self-start">
+          <Panel
+            eyebrow="Argument Map"
+            title={analysis.argumentMap.headline}
+            description="Premises feed the core claim, the claim turns into impact, and the opponent's best counter is isolated so the flow stays readable."
+          >
+            <ArgumentMapDiagram argumentMap={analysis.argumentMap} />
+          </Panel>
 
-        <Panel
-          eyebrow="Logical Weaknesses"
-          title="Where a sharp opponent can punish the reasoning"
-          description="These are not just style problems. They are the fastest ways your case can get structurally undercut."
-        >
-          <LogicalWeaknessCards fallacies={analysis.fallacies} />
-        </Panel>
+          <Panel
+            eyebrow="Premise To Claim"
+            title="How your core lines are structurally built"
+            description="This structure view shows the premises, warrant, impact, and likely collapse point for the core claims in your round."
+          >
+            <PremiseClaimStacks frames={analysis.argumentFrames} />
+          </Panel>
+        </div>
+
+        <div className="grid gap-6 self-start">
+          <Panel
+            eyebrow="Logical Weaknesses"
+            title="Where a sharp opponent can punish the reasoning"
+            description="These are not just style problems. They are the fastest ways your case can get structurally undercut."
+          >
+            <LogicalWeaknessCards fallacies={analysis.fallacies} />
+          </Panel>
+
+          <Panel
+            eyebrow="Crossfire Drill"
+            title="Questions you should be ready to ask and answer"
+            description="These are the cross-ex questions that put pressure on the opponent's best lane while protecting your weakest point."
+          >
+            <CrossfireDrillPanel drillQuestions={insights.drillQuestions} />
+          </Panel>
+
+          <Panel
+            eyebrow="Case Surgery"
+            title="The highest-value structural repairs"
+            description="If the report could mark up your case like a coach before the next round, these are the repairs it would make first."
+          >
+            <CaseRepairPanel
+              caseRepairs={insights.caseRepairs}
+              weakestMetricLabel={insights.weakestMetric?.label ?? null}
+            />
+          </Panel>
+        </div>
       </section>
-
-      <Panel
-        eyebrow="Premise To Claim"
-        title="How your best lines are built"
-        description="This structure view shows the premises, warrant, impact, and likely collapse point for the core claims in your round."
-      >
-        <PremiseClaimStacks frames={analysis.argumentFrames} />
-      </Panel>
     </div>
   );
 }
