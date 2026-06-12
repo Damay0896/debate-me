@@ -737,18 +737,6 @@ html[data-theme="light"] .theme-accent-chip {
     width: 100%;
   }
 
-  .report-map-flow {
-    grid-template-columns:
-      minmax(0, 1.1fr)
-      auto
-      minmax(0, 0.85fr)
-      auto
-      minmax(0, 0.95fr)
-      auto
-      minmax(0, 0.95fr);
-    align-items: start;
-  }
-
   .report-map-board {
     grid-template-columns: minmax(0, 1fr) auto minmax(15rem, 0.88fr) auto minmax(0, 1fr);
     align-items: start;
