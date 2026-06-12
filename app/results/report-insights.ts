@@ -326,7 +326,7 @@ export function buildReportInsights(
   const totalWords = userMessages.reduce((sum, text) => sum + countWords(text), 0);
   const averageWords =
     userMessages.length > 0 ? Math.round(totalWords / userMessages.length) : 0;
-  const hasTranscriptArchive = userMessages.length > 0 || opponentMessages.length > 0;
+  const hasTranscriptArchive = totalWords > 0;
 
   const evidenceMetric = getMetric(analysis.metrics, "evidence");
   const rebuttalMetric = getMetric(analysis.metrics, "rebuttal");
