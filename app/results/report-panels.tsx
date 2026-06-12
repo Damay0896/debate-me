@@ -1011,185 +1011,199 @@ export function ResultsReportPanels({
 
   return (
     <div className="grid gap-6">
-      <section
-        id="receipts"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-2 xl:items-start"
-      >
-        <div className="grid gap-6 self-start">
-          <Panel
-            eyebrow="Transcript Receipts"
-            title="What the judge actually heard"
-            description="These are the exact moments that helped you, hurt you, or left an upgrade sitting on the table."
-          >
-            <TranscriptReceipts receipts={analysis.transcriptReceipts} />
-          </Panel>
+      <section id="receipts" className="scroll-mt-28">
+        <div className="report-masonry-grid">
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Transcript Receipts"
+              title="What the judge actually heard"
+              description="These are the exact moments that helped you, hurt you, or left an upgrade sitting on the table."
+            >
+              <TranscriptReceipts receipts={analysis.transcriptReceipts} />
+            </Panel>
+          </div>
 
-          <Panel
-            eyebrow="Quote Lab"
-            title="The lines to keep, punish, and rewrite"
-            description="A premium report should not just summarize the round. It should show you the exact sentences carrying the real weight."
-          >
-            <QuoteWorkshop quoteInsights={insights.quoteInsights} />
-          </Panel>
-        </div>
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Quote Lab"
+              title="The lines to keep, punish, and rewrite"
+              description="A premium report should not just summarize the round. It should show you the exact sentences carrying the real weight."
+            >
+              <QuoteWorkshop quoteInsights={insights.quoteInsights} />
+            </Panel>
+          </div>
 
-        <div className="grid gap-6 self-start">
-          <Panel
-            eyebrow="Opponent Read"
-            title="Their strongest point and your best counter"
-            description="This isolates the sharpest thing the opponent said and gives you the cleanest answer to it."
-          >
-            <OpponentCaseCard opponentCaseReview={analysis.opponentCaseReview} />
-          </Panel>
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Opponent Read"
+              title="Their strongest point and your best counter"
+              description="This isolates the sharpest thing the opponent said and gives you the cleanest answer to it."
+            >
+              <OpponentCaseCard opponentCaseReview={analysis.opponentCaseReview} />
+            </Panel>
+          </div>
 
-          <Panel
-            eyebrow="Missed Arguments"
-            title="Good arguments you left on the table"
-            description="These were available from the transcript you already had, so they are the fastest gains for the replay."
-          >
-            <MissedOpportunitiesList opportunities={analysis.missedOpportunities} />
-          </Panel>
-        </div>
-      </section>
-
-      <section
-        id="skills"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-2 xl:items-start"
-      >
-        <div className="grid gap-6 self-start">
-          <Panel
-            eyebrow="Skill Breakdown"
-            title="Seven-skill scorecard"
-            description="This replaces the one-number read with a coach-style breakdown of the exact skills deciding your round."
-          >
-            <SkillBreakdown metrics={analysis.metrics} />
-          </Panel>
-
-          <Panel
-            eyebrow="Speech Pattern Radar"
-            title="How your debate habits actually showed up"
-            description="This is the practical pattern read: evidence use, clash frequency, weighing, definitions, absolutism, and turn density."
-          >
-            <DebatePatternRadar patternStats={insights.patternStats} />
-          </Panel>
-        </div>
-
-        <div className="grid gap-6 self-start">
-          <Panel
-            eyebrow="Round Story"
-            title="How the round rose or sagged"
-            description="This is the tempo read: where the round had energy, where it slipped, and where the judge mentally leaned."
-          >
-            <MomentumPanel momentum={analysis.momentum} />
-          </Panel>
-
-          <Panel
-            eyebrow="Debate DNA"
-            title="Your round identity and next-level focus"
-            description="This gives the premium-profile read: what kind of debater you looked like in this round, and what that means for the replay."
-          >
-            <DebateProfilePanel
-              analysis={analysis}
-              profileSignals={insights.profileSignals}
-            />
-          </Panel>
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Missed Arguments"
+              title="Good arguments you left on the table"
+              description="These were available from the transcript you already had, so they are the fastest gains for the replay."
+            >
+              <MissedOpportunitiesList opportunities={analysis.missedOpportunities} />
+            </Panel>
+          </div>
         </div>
       </section>
 
-      <section
-        id="coach"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-2 xl:items-start"
-      >
-        <div className="grid gap-6 self-start">
-          <Panel
-            eyebrow="Coach Feedback"
-            title="Actionable coaching, not generic criticism"
-            description="What you should keep, what is still leaking, and what to deliberately fix on the replay."
-          >
-            <CoachFeedback
-              strengths={analysis.strengths}
-              weaknesses={analysis.weaknesses}
-              nextSteps={analysis.nextSteps}
-            />
-          </Panel>
+      <section id="skills" className="scroll-mt-28">
+        <div className="report-masonry-grid">
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Skill Breakdown"
+              title="Seven-skill scorecard"
+              description="This replaces the one-number read with a coach-style breakdown of the exact skills deciding your round."
+            >
+              <SkillBreakdown metrics={analysis.metrics} />
+            </Panel>
+          </div>
 
-          <Panel
-            eyebrow="Judge Ballot"
-            title="What a sharp judge would actually write down"
-            description="This is the ballot-language version of the round: why it broke the way it did, what decided it, and what flips the call."
-          >
-            <JudgeBallotPanel ballotCallouts={insights.ballotCallouts} />
-          </Panel>
-        </div>
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Speech Pattern Radar"
+              title="How your debate habits actually showed up"
+              description="This is the practical pattern read: evidence use, clash frequency, weighing, definitions, absolutism, and turn density."
+            >
+              <DebatePatternRadar patternStats={insights.patternStats} />
+            </Panel>
+          </div>
 
-        <div className="grid gap-6 self-start">
-          <Panel
-            eyebrow="Pressure Test"
-            title="The fastest attacks against your case"
-            description="These are the easiest pressure points an opponent can hit and the exact one-line fix that patches each one."
-          >
-            <PressureCards collapsePoints={analysis.collapsePoints} />
-          </Panel>
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Round Story"
+              title="How the round rose or sagged"
+              description="This is the tempo read: where the round had energy, where it slipped, and where the judge mentally leaned."
+            >
+              <MomentumPanel momentum={analysis.momentum} />
+            </Panel>
+          </div>
 
-          <Panel
-            eyebrow="Replay Blueprint"
-            title="What to say differently next time"
-            description="This turns the report into a practical rematch plan: how to open, how to answer pressure, and how to close with intent."
-          >
-            <ReplayBlueprintPanel replaySteps={insights.replaySteps} />
-          </Panel>
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Debate DNA"
+              title="Your round identity and next-level focus"
+              description="This gives the premium-profile read: what kind of debater you looked like in this round, and what that means for the replay."
+            >
+              <DebateProfilePanel
+                analysis={analysis}
+                profileSignals={insights.profileSignals}
+              />
+            </Panel>
+          </div>
         </div>
       </section>
 
-      <section
-        id="map"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-2 xl:items-start"
-      >
-        <div className="grid gap-6 self-start">
-          <Panel
-            eyebrow="Argument Map"
-            title={analysis.argumentMap.headline}
-            description="Premises feed the core claim, the claim turns into impact, and the opponent's best counter is isolated so the flow stays readable."
-          >
-            <ArgumentMapDiagram argumentMap={analysis.argumentMap} />
-          </Panel>
+      <section id="coach" className="scroll-mt-28">
+        <div className="report-masonry-grid">
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Coach Feedback"
+              title="Actionable coaching, not generic criticism"
+              description="What you should keep, what is still leaking, and what to deliberately fix on the replay."
+            >
+              <CoachFeedback
+                strengths={analysis.strengths}
+                weaknesses={analysis.weaknesses}
+                nextSteps={analysis.nextSteps}
+              />
+            </Panel>
+          </div>
 
-          <Panel
-            eyebrow="Premise To Claim"
-            title="How your core lines are structurally built"
-            description="This structure view shows the premises, warrant, impact, and likely collapse point for the core claims in your round."
-          >
-            <PremiseClaimStacks frames={analysis.argumentFrames} />
-          </Panel>
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Judge Ballot"
+              title="What a sharp judge would actually write down"
+              description="This is the ballot-language version of the round: why it broke the way it did, what decided it, and what flips the call."
+            >
+              <JudgeBallotPanel ballotCallouts={insights.ballotCallouts} />
+            </Panel>
+          </div>
+
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Pressure Test"
+              title="The fastest attacks against your case"
+              description="These are the easiest pressure points an opponent can hit and the exact one-line fix that patches each one."
+            >
+              <PressureCards collapsePoints={analysis.collapsePoints} />
+            </Panel>
+          </div>
+
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Replay Blueprint"
+              title="What to say differently next time"
+              description="This turns the report into a practical rematch plan: how to open, how to answer pressure, and how to close with intent."
+            >
+              <ReplayBlueprintPanel replaySteps={insights.replaySteps} />
+            </Panel>
+          </div>
         </div>
+      </section>
 
-        <div className="grid gap-6 self-start">
-          <Panel
-            eyebrow="Logical Weaknesses"
-            title="Where a sharp opponent can punish the reasoning"
-            description="These are not just style problems. They are the fastest ways your case can get structurally undercut."
-          >
-            <LogicalWeaknessCards fallacies={analysis.fallacies} />
-          </Panel>
+      <section id="map" className="scroll-mt-28">
+        <div className="report-masonry-grid">
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Argument Map"
+              title={analysis.argumentMap.headline}
+              description="Premises feed the core claim, the claim turns into impact, and the opponent's best counter is isolated so the flow stays readable."
+            >
+              <ArgumentMapDiagram argumentMap={analysis.argumentMap} />
+            </Panel>
+          </div>
 
-          <Panel
-            eyebrow="Crossfire Drill"
-            title="Questions you should be ready to ask and answer"
-            description="These are the cross-ex questions that put pressure on the opponent's best lane while protecting your weakest point."
-          >
-            <CrossfireDrillPanel drillQuestions={insights.drillQuestions} />
-          </Panel>
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Premise To Claim"
+              title="How your core lines are structurally built"
+              description="This structure view shows the premises, warrant, impact, and likely collapse point for the core claims in your round."
+            >
+              <PremiseClaimStacks frames={analysis.argumentFrames} />
+            </Panel>
+          </div>
 
-          <Panel
-            eyebrow="Case Surgery"
-            title="The highest-value structural repairs"
-            description="If the report could mark up your case like a coach before the next round, these are the repairs it would make first."
-          >
-            <CaseRepairPanel
-              caseRepairs={insights.caseRepairs}
-              weakestMetricLabel={insights.weakestMetric?.label ?? null}
-            />
-          </Panel>
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Logical Weaknesses"
+              title="Where a sharp opponent can punish the reasoning"
+              description="These are not just style problems. They are the fastest ways your case can get structurally undercut."
+            >
+              <LogicalWeaknessCards fallacies={analysis.fallacies} />
+            </Panel>
+          </div>
+
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Crossfire Drill"
+              title="Questions you should be ready to ask and answer"
+              description="These are the cross-ex questions that put pressure on the opponent's best lane while protecting your weakest point."
+            >
+              <CrossfireDrillPanel drillQuestions={insights.drillQuestions} />
+            </Panel>
+          </div>
+
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Case Surgery"
+              title="The highest-value structural repairs"
+              description="If the report could mark up your case like a coach before the next round, these are the repairs it would make first."
+            >
+              <CaseRepairPanel
+                caseRepairs={insights.caseRepairs}
+                weakestMetricLabel={insights.weakestMetric?.label ?? null}
+              />
+            </Panel>
+          </div>
         </div>
       </section>
     </div>

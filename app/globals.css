@@ -658,6 +658,15 @@ html[data-theme="light"] .theme-accent-chip {
   align-self: flex-start;
 }
 
+.report-masonry-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.report-masonry-item {
+  break-inside: avoid;
+}
+
 .report-map-flow {
   display: grid;
   gap: 1rem;
@@ -716,6 +725,18 @@ html[data-theme="light"] .theme-accent-chip {
 }
 
 @media (min-width: 1280px) {
+  .report-masonry-grid {
+    display: block;
+    column-count: 2;
+    column-gap: 1.5rem;
+  }
+
+  .report-masonry-item {
+    display: inline-block;
+    margin: 0 0 1.5rem;
+    width: 100%;
+  }
+
   .report-map-flow {
     grid-template-columns:
       minmax(0, 1.1fr)
