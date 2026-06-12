@@ -147,6 +147,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     sessionKey: "",
     source: "heuristic",
   });
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [isRouting, startTransition] = useTransition();
 
   useEffect(() => {
@@ -336,6 +337,40 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
+  async function copyReplayBrief() {
+    const lines = [
+      `Debate topic: ${activeSession.topic}`,
+      `Verdict: ${report.verdict}`,
+      `Winner confidence: ${report.winnerConfidence}%`,
+      `Best next improvement: ${report.bestNextImprovement.title}`,
+      `Replay focus: ${replayFocus}`,
+      "",
+      "Rematch script:",
+      ...reportInsights.rematchScript.map(
+        (step) => `- ${step.label}: ${step.line}`,
+      ),
+      "",
+      "Judge simulator:",
+      ...reportInsights.judgePerspectives.map(
+        (judge) => `- ${judge.label}: ${judge.verdict}. ${judge.nextMove}`,
+      ),
+      "",
+      "Counterplay:",
+      ...reportInsights.counterplayMoves.map(
+        (move) => `- ${move.title}: ${move.answer}`,
+      ),
+    ];
+
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 2200);
+    } catch {
+      setCopyState("failed");
+      window.setTimeout(() => setCopyState("idle"), 2200);
+    }
+  }
+
   return (
     <main className="report-shell relative min-h-screen overflow-hidden px-6 py-8 sm:px-8">
       <div className="report-page-glow pointer-events-none absolute inset-0" />
@@ -395,6 +430,19 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                 className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition"
               >
                 Export Feedback PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void copyReplayBrief();
+                }}
+                className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition"
+              >
+                {copyState === "copied"
+                  ? "Replay brief copied"
+                  : copyState === "failed"
+                    ? "Copy failed"
+                    : "Copy replay brief"}
               </button>
               <Link
                 href="/"

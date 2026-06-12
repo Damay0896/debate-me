@@ -20,6 +20,23 @@ import {
 } from "@/lib/debate";
 import { loadSession, saveSession } from "@/lib/debate-storage";
 
+const evidencePattern =
+  /\b(data|study|research|evidence|statistic|according to|for example|for instance|report)\b/i;
+const rebuttalPattern =
+  /\b(however|but|although|while|even if|that assumes|your argument|your claim|rebut|counter)\b/i;
+const weighingPattern =
+  /\b(outweigh|weigh|more important|more than|greater harm|bigger impact|matters more|on balance)\b/i;
+const definitionPattern =
+  /\b(define|definition|when i say|what i mean by|understand .* as|by .* i mean)\b/i;
+const warrantPattern =
+  /\b(because|since|therefore|thus|which means|this means|as a result|leads to|results in|so that)\b/i;
+const impactPattern =
+  /\b(harm|benefit|impact|consequence|risk|cost|matters because|means that|leads to)\b/i;
+const absolutePattern =
+  /\b(always|never|everyone|nobody|all|none|obviously|clearly)\b/i;
+const contestedTermPattern =
+  /\b(harm|good|better|fair|freedom|rights|justice|safe|dangerous|benefit|strong)\b/i;
+
 type DebateExperienceProps = {
   initialSessionId: string;
   initialOpponentPersonality: OpponentPersonality;
@@ -28,6 +45,35 @@ type DebateExperienceProps = {
   initialTopic: string;
   initialCoachFocus: string;
 };
+
+type CoachStat = {
+  label: string;
+  note: string;
+  tone: "accent" | "neutral" | "warning";
+  value: string;
+};
+
+type DraftCheck = {
+  label: string;
+  note: string;
+  ready: boolean;
+};
+
+function countWords(value: string) {
+  return value.split(/\s+/).filter(Boolean).length;
+}
+
+function getTone(count: number, strongThreshold: number, midThreshold: number) {
+  if (count >= strongThreshold) {
+    return "accent" as const;
+  }
+
+  if (count >= midThreshold) {
+    return "neutral" as const;
+  }
+
+  return "warning" as const;
+}
 
 function getInitialSession(
   initialSessionId: string,
@@ -46,6 +92,139 @@ function getInitialSession(
       sideChoice: initialSideChoice,
     })
   );
+}
+
+function buildLiveCoach(
+  session: DebateSession,
+  draft: string,
+  opponentPersonality: ReturnType<typeof getOpponentPersonalityMeta>,
+) {
+  const userMessages = session.messages.filter((message) => message.speaker === "You");
+  const opponentMessages = session.messages.filter(
+    (message) => message.speaker === "AI Opponent",
+  );
+  const userTexts = userMessages.map((message) => message.text);
+  const evidenceTurns = userTexts.filter((text) => evidencePattern.test(text)).length;
+  const rebuttalTurns = userTexts.filter((text) => rebuttalPattern.test(text)).length;
+  const weighingTurns = userTexts.filter((text) => weighingPattern.test(text)).length;
+  const definitionTurns = userTexts.filter((text) => definitionPattern.test(text)).length;
+  const absoluteTurns = userTexts.filter((text) => absolutePattern.test(text)).length;
+  const totalWords = userTexts.reduce((sum, text) => sum + countWords(text), 0);
+  const averageWords =
+    userTexts.length > 0 ? Math.round(totalWords / userTexts.length) : 0;
+  const latestOpponentMessage =
+    opponentMessages.length > 0 ? opponentMessages[opponentMessages.length - 1].text : "";
+  const draftWordCount = countWords(draft);
+
+  const stats: CoachStat[] = [
+    {
+      label: "Evidence lane",
+      note:
+        evidenceTurns > 0
+          ? "You have at least some proof language in the round."
+          : "No hard proof has landed yet, so unsupported-claim attacks stay live.",
+      tone: getTone(evidenceTurns, 2, 1),
+      value: `${evidenceTurns}/${Math.max(userMessages.length, 1)}`,
+    },
+    {
+      label: "Clash rate",
+      note:
+        rebuttalTurns > 0
+          ? "You are answering pressure instead of only extending offense."
+          : "The opponent is still getting too many assumptions for free.",
+      tone: getTone(rebuttalTurns, 2, 1),
+      value: `${rebuttalTurns}/${Math.max(userMessages.length, 1)}`,
+    },
+    {
+      label: "Impact weighing",
+      note:
+        weighingTurns > 0
+          ? "There is at least some judge-directed comparison in the round."
+          : "You still need a clean why-my-world-is-better sentence.",
+      tone: getTone(weighingTurns, 1, 1),
+      value: `${weighingTurns}`,
+    },
+    {
+      label: "Turn depth",
+      note:
+        averageWords >= 32
+          ? "Your average turn has enough room for claim, warrant, and impact."
+          : "Most turns still need one more sentence of warrant or impact.",
+      tone: averageWords >= 32 ? "accent" : averageWords >= 22 ? "neutral" : "warning",
+      value: averageWords > 0 ? `${averageWords} words` : "No turns",
+    },
+  ];
+
+  const draftChecks: DraftCheck[] = [
+    {
+      label: "Claim",
+      note: "State the position in a sentence sturdy enough to defend.",
+      ready: draftWordCount >= 8,
+    },
+    {
+      label: "Warrant",
+      note: "Explain why the claim follows instead of merely asserting it.",
+      ready: warrantPattern.test(draft),
+    },
+    {
+      label: "Impact",
+      note: "Tell the judge why the consequence matters.",
+      ready: impactPattern.test(draft),
+    },
+    {
+      label: "Clash",
+      note: "Name the opponent's assumption or answer their best point directly.",
+      ready: rebuttalPattern.test(draft),
+    },
+  ];
+
+  const nudges: string[] = [];
+
+  if (!evidencePattern.test(draft) && evidenceTurns === 0) {
+    nudges.push("Add one statistic, study, or real-world example before you send this turn.");
+  }
+
+  if (latestOpponentMessage && !rebuttalPattern.test(draft)) {
+    nudges.push("Directly name one assumption from the opponent before extending your own case.");
+  }
+
+  if (!impactPattern.test(draft) && weighingTurns === 0) {
+    nudges.push("End with a ballot sentence that compares your impact to theirs.");
+  }
+
+  if (
+    contestedTermPattern.test(draft) &&
+    !definitionPattern.test(draft) &&
+    definitionTurns === 0
+  ) {
+    nudges.push("Define the key contested term so the opponent cannot choose the standard for you.");
+  }
+
+  if (absolutePattern.test(draft) || absoluteTurns > 0) {
+    nudges.push("Trim universal wording unless you are ready to defend every exception.");
+  }
+
+  if (draftWordCount > 0 && draftWordCount < 24) {
+    nudges.push("One more sentence probably helps more than one more adjective right now.");
+  }
+
+  const momentumRead =
+    userMessages.length === 0
+      ? "Opening move"
+      : evidenceTurns === 0 || rebuttalTurns === 0
+        ? "Pressure building"
+        : weighingTurns > 0
+          ? "Judgeable"
+          : "Live but incomplete";
+
+  return {
+    draftChecks,
+    momentumRead,
+    nudges: nudges.slice(0, 4),
+    pressureHabits: opponentPersonality.argumentHabits.slice(0, 3),
+    pressureQuestions: opponentPersonality.followUps.slice(0, 3),
+    stats,
+  };
 }
 
 export default function DebateExperience({
@@ -82,7 +261,7 @@ export default function DebateExperience({
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [session?.messages.length, isThinking]);
+  }, [session.messages.length, isThinking]);
 
   async function sendMessage() {
     if (!session || input.trim() === "" || isThinking) {
@@ -137,6 +316,8 @@ export default function DebateExperience({
   const userTurns = session.messages.filter((message) => message.speaker === "You").length;
   const opponentPersonality = getOpponentPersonalityMeta(session.opponentPersonality);
   const replyStyle = getReplyStyleMeta(session.replyStyle);
+  const liveCoach = buildLiveCoach(session, input, opponentPersonality);
+  const draftWordCount = countWords(input);
 
   return (
     <main className="min-h-screen px-6 py-8 sm:px-8">
@@ -151,10 +332,10 @@ export default function DebateExperience({
                 {session.topic}
               </h1>
               <p className="theme-copy mt-3 max-w-3xl text-base leading-7">
-                {opponentPersonality.label}-inspired mode is active, so the
-                opponent will pressure you with{" "}
-                {opponentPersonality.description.toLowerCase()}. Replies are set
-                to {replyStyle.label.toLowerCase()}.
+                {opponentPersonality.label}-inspired mode is active, so the opponent
+                will pressure you with{" "}
+                {opponentPersonality.description.toLowerCase()}. Replies are set to{" "}
+                {replyStyle.label.toLowerCase()}.
               </p>
               <div className="theme-copy mt-4 flex flex-wrap gap-3 text-sm">
                 <span className="theme-pill rounded-full border px-4 py-2">
@@ -206,101 +387,234 @@ export default function DebateExperience({
           </section>
         ) : null}
 
-        <section className="theme-panel rounded-[2rem] border p-4 md:p-6">
-          <div className="max-h-[55vh] overflow-y-auto pr-1">
-            {session.messages.map((message) => {
-              const isUser = message.speaker === "You";
+        <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
+          <section className="theme-panel rounded-[2rem] border p-4 md:p-6">
+            <div className="max-h-[55vh] overflow-y-auto pr-1">
+              {session.messages.map((message) => {
+                const isUser = message.speaker === "You";
 
-              return (
-                <article
-                  key={message.id}
-                  className={`mb-4 rounded-[1.6rem] border p-5 ${
-                    isUser
-                      ? "theme-chat-user ml-auto max-w-3xl"
-                      : "theme-chat-opponent mr-auto max-w-3xl"
-                  }`}
-                >
+                return (
+                  <article
+                    key={message.id}
+                    className={`mb-4 rounded-[1.6rem] border p-5 ${
+                      isUser
+                        ? "theme-chat-user ml-auto max-w-3xl"
+                        : "theme-chat-opponent mr-auto max-w-3xl"
+                    }`}
+                  >
+                    <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
+                      {message.speaker}
+                    </p>
+                    <p className="theme-strong mt-3 text-base leading-7">
+                      {message.text}
+                    </p>
+                  </article>
+                );
+              })}
+
+              {isThinking && (
+                <article className="theme-chat-opponent mb-4 mr-auto max-w-3xl rounded-[1.6rem] border p-5">
                   <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
-                    {message.speaker}
+                    AI Opponent
                   </p>
                   <p className="theme-strong mt-3 text-base leading-7">
-                    {message.text}
+                    {getOpponentThinkingCopy(session)}
                   </p>
                 </article>
-              );
-            })}
+              )}
 
-            {isThinking && (
-              <article className="theme-chat-opponent mb-4 mr-auto max-w-3xl rounded-[1.6rem] border p-5">
-                <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
-                  AI Opponent
-                </p>
-                <p className="theme-strong mt-3 text-base leading-7">
-                  {getOpponentThinkingCopy(session)}
-                </p>
-              </article>
-            )}
-
-            <div ref={transcriptEndRef} />
-          </div>
-
-          <div className="theme-surface mt-4 rounded-[1.8rem] border p-4">
-            <label
-              htmlFor="argument"
-              className="theme-copy mb-3 block text-sm font-medium"
-            >
-              Your next argument
-            </label>
-            <textarea
-              id="argument"
-              rows={5}
-              className="theme-input w-full rounded-[1.5rem] border px-4 py-4 text-base outline-none transition"
-              placeholder={getDebateInputPlaceholder(session.replyStyle)}
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                  event.preventDefault();
-                  void sendMessage();
-                }
-              }}
-            />
-
-            <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <p className="theme-muted text-sm">
-                Tip: use Ctrl/Cmd + Enter to send a turn.
-              </p>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  disabled={isThinking}
-                  onClick={() => {
-                    setInput("");
-                    setError(null);
-                  }}
-                  className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
-                >
-                  Clear draft
-                </button>
-                <button
-                  type="button"
-                  disabled={isThinking || input.trim() === ""}
-                  onClick={() => {
-                    void sendMessage();
-                  }}
-                  className="theme-button-primary rounded-full px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isThinking ? "Opponent thinking..." : "Send argument"}
-                </button>
-              </div>
+              <div ref={transcriptEndRef} />
             </div>
 
-            {error ? (
-              <p className="theme-error mt-4 text-sm">{error}</p>
-            ) : null}
-          </div>
-        </section>
+            <div className="theme-surface mt-4 rounded-[1.8rem] border p-4">
+              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <label
+                    htmlFor="argument"
+                    className="theme-copy mb-3 block text-sm font-medium"
+                  >
+                    Your next argument
+                  </label>
+                  <p className="theme-muted text-sm">
+                    Momentum read: {liveCoach.momentumRead}
+                  </p>
+                </div>
+                <span className="theme-pill rounded-full border px-4 py-2 text-sm">
+                  {draftWordCount > 0 ? `${draftWordCount} draft words` : "Draft empty"}
+                </span>
+              </div>
+
+              <textarea
+                id="argument"
+                rows={5}
+                className="theme-input mt-4 w-full rounded-[1.5rem] border px-4 py-4 text-base outline-none transition"
+                placeholder={getDebateInputPlaceholder(session.replyStyle)}
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+                    event.preventDefault();
+                    void sendMessage();
+                  }
+                }}
+              />
+
+              <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <p className="theme-muted text-sm">
+                  Tip: use Ctrl/Cmd + Enter to send a turn.
+                </p>
+
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    disabled={isThinking}
+                    onClick={() => {
+                      setInput("");
+                      setError(null);
+                    }}
+                    className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
+                  >
+                    Clear draft
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isThinking || input.trim() === ""}
+                    onClick={() => {
+                      void sendMessage();
+                    }}
+                    className="theme-button-primary rounded-full px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isThinking ? "Opponent thinking..." : "Send argument"}
+                  </button>
+                </div>
+              </div>
+
+              {error ? <p className="theme-error mt-4 text-sm">{error}</p> : null}
+            </div>
+          </section>
+
+          <aside className="grid gap-4">
+            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                Live coach
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold">Round pressure dashboard</h2>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                {liveCoach.stats.map((stat) => (
+                  <article
+                    key={stat.label}
+                    className="theme-surface rounded-[1.35rem] border p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                        {stat.label}
+                      </p>
+                      <span
+                        className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${
+                          stat.tone === "accent"
+                            ? "theme-status-anchor"
+                            : stat.tone === "warning"
+                              ? "theme-status-collapse"
+                              : "theme-status-developing"
+                        }`}
+                      >
+                        {stat.value}
+                      </span>
+                    </div>
+                    <p className="theme-copy mt-3 text-sm leading-6">{stat.note}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                Draft builder
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold">Before you hit send</h2>
+              <div className="mt-5 grid gap-3">
+                {liveCoach.draftChecks.map((check) => (
+                  <article
+                    key={check.label}
+                    className="theme-surface rounded-[1.35rem] border p-4"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-sm font-semibold">{check.label}</p>
+                      <span
+                        className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${
+                          check.ready ? "theme-status-anchor" : "theme-status-collapse"
+                        }`}
+                      >
+                        {check.ready ? "ready" : "missing"}
+                      </span>
+                    </div>
+                    <p className="theme-copy mt-3 text-sm leading-6">{check.note}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                Coach nudges
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold">Highest-value fixes right now</h2>
+              <div className="mt-5 space-y-3">
+                {(liveCoach.nudges.length > 0
+                  ? liveCoach.nudges
+                  : [
+                      "Your draft has the core pieces. Tighten the strongest sentence and send with confidence.",
+                    ]
+                ).map((item) => (
+                  <div
+                    key={item}
+                    className="theme-surface report-list-item rounded-[1.35rem] border p-4"
+                  >
+                    <span className="report-list-dot bg-[var(--accent)]" />
+                    <span className="theme-copy text-sm leading-6">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                Opponent scout
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold">
+                How {opponentPersonality.label} usually punishes
+              </h2>
+
+              <div className="theme-subcard mt-5 rounded-[1.35rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                  Likely cross-ex questions
+                </p>
+                <div className="mt-3 space-y-3">
+                  {liveCoach.pressureQuestions.map((item) => (
+                    <div key={item} className="report-list-item">
+                      <span className="report-list-dot bg-rose-400/80" />
+                      <span className="theme-copy text-sm leading-6">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="theme-subcard mt-4 rounded-[1.35rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                  Habits to pre-empt
+                </p>
+                <div className="mt-3 space-y-3">
+                  {liveCoach.pressureHabits.map((item) => (
+                    <div key={item} className="report-list-item">
+                      <span className="report-list-dot bg-emerald-400/80" />
+                      <span className="theme-copy text-sm leading-6">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </aside>
+        </div>
       </div>
     </main>
   );

@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import {
   DEFAULT_OPPONENT_PERSONALITY,
@@ -20,12 +21,55 @@ import {
   type ReplyStyle,
   type SideChoice,
 } from "@/lib/debate";
+import {
+  loadActiveSessionId,
+  loadAnalysisRecord,
+  listStoredSessions,
+} from "@/lib/debate-storage";
 
 const sideCopy: Record<SideChoice, string> = {
   Pro: "You'll defend the statement.",
   Con: "You'll challenge the statement.",
   Random: "We will assign your side at launch.",
 };
+
+type RecentRound = {
+  active: boolean;
+  analysisSummary: string | null;
+  result: "win" | "loss" | "tie" | "live";
+  score: number | null;
+  sessionId: string;
+  topic: string;
+  turns: number;
+  updatedAt: string;
+  winner: string | null;
+  mode: string;
+  persona: string;
+};
+
+function formatRelativeTime(value: string) {
+  const then = new Date(value).getTime();
+
+  if (Number.isNaN(then)) {
+    return "Updated recently";
+  }
+
+  const diffMs = then - Date.now();
+  const diffMinutes = Math.round(diffMs / 60000);
+  const formatter = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  if (Math.abs(diffMinutes) < 60) {
+    return formatter.format(diffMinutes, "minute");
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+
+  if (Math.abs(diffHours) < 36) {
+    return formatter.format(diffHours, "hour");
+  }
+
+  return formatter.format(Math.round(diffHours / 24), "day");
+}
 
 export default function Home() {
   const router = useRouter();
@@ -35,7 +79,16 @@ export default function Home() {
     useState<OpponentPersonality>(DEFAULT_OPPONENT_PERSONALITY);
   const [replyStyle, setReplyStyle] = useState<ReplyStyle>(DEFAULT_REPLY_STYLE);
   const [personalityQuery, setPersonalityQuery] = useState("");
+  const [recentRounds, setRecentRounds] = useState<RecentRound[]>([]);
   const [isPending, startTransition] = useTransition();
+  const selectedPersonalityMeta = useMemo(
+    () => getOpponentPersonalityMeta(opponentPersonality),
+    [opponentPersonality],
+  );
+  const selectedReplyStyleMeta = useMemo(
+    () => getReplyStyleMeta(replyStyle),
+    [replyStyle],
+  );
 
   const normalizedPersonalityQuery = personalityQuery.trim().toLowerCase();
   const visiblePersonalityGroups = OPPONENT_PERSONALITY_GROUPS.map((group) => ({
@@ -54,6 +107,45 @@ export default function Home() {
   useEffect(() => {
     router.prefetch("/debate");
   }, [router]);
+
+  useEffect(() => {
+    function hydrateRecentRounds() {
+      const activeSessionId = loadActiveSessionId();
+      const sessions = listStoredSessions().slice(0, 6);
+      const nextRecentRounds = sessions.map((session) => {
+        const analysisRecord = loadAnalysisRecord(session.id);
+        const analysis = analysisRecord?.analysis ?? null;
+        const turnCount = session.messages.filter(
+          (message) => message.speaker === "You",
+        ).length;
+
+        return {
+          active: session.id === activeSessionId,
+          analysisSummary: analysis?.summary ?? null,
+          result: analysis?.result ?? (turnCount > 0 ? "live" : "tie"),
+          score: analysis?.score ?? null,
+          sessionId: session.id,
+          topic: session.topic,
+          turns: turnCount,
+          updatedAt: session.updatedAt,
+          winner: analysis?.winner ?? null,
+          mode: getReplyStyleMeta(session.replyStyle).label,
+          persona: getOpponentPersonalityMeta(session.opponentPersonality).label,
+        } satisfies RecentRound;
+      });
+
+      setRecentRounds(nextRecentRounds);
+    }
+
+    hydrateRecentRounds();
+    window.addEventListener("focus", hydrateRecentRounds);
+    window.addEventListener("storage", hydrateRecentRounds);
+
+    return () => {
+      window.removeEventListener("focus", hydrateRecentRounds);
+      window.removeEventListener("storage", hydrateRecentRounds);
+    };
+  }, []);
 
   function launchDebate() {
     const normalizedTopic = normalizeTopic(topic);
@@ -277,6 +369,59 @@ export default function Home() {
             </div>
           </div>
 
+          <div className="theme-surface mt-8 rounded-[1.8rem] border p-5">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="max-w-2xl">
+                <p className="theme-kicker text-xs uppercase tracking-[0.28em]">
+                  Opponent scouting report
+                </p>
+                <h3 className="mt-3 text-2xl font-semibold">
+                  {selectedPersonalityMeta.label} in {selectedReplyStyleMeta.label} mode
+                </h3>
+                <p className="theme-copy mt-3 text-sm leading-6">
+                  {selectedReplyStyleMeta.description} Expect {selectedPersonalityMeta.label} to
+                  push with {selectedPersonalityMeta.description.toLowerCase()}
+                </p>
+              </div>
+              <span className="theme-pill rounded-full border px-4 py-2 text-sm">
+                Best prep: claim, warrant, impact
+              </span>
+            </div>
+
+            <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+              <div className="theme-subcard rounded-[1.35rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                  Likely pressure points
+                </p>
+                <div className="mt-3 space-y-3">
+                  {selectedPersonalityMeta.followUps.slice(0, 3).map((item) => (
+                    <div key={item} className="report-list-item">
+                      <span className="report-list-dot bg-[var(--accent)]" />
+                      <span className="theme-copy text-sm leading-6">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="theme-subcard rounded-[1.35rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                  What wins this matchup
+                </p>
+                <div className="mt-3 space-y-3">
+                  {selectedPersonalityMeta.argumentHabits.slice(0, 3).map((item) => (
+                    <div key={item} className="report-list-item">
+                      <span className="report-list-dot bg-emerald-400/80" />
+                      <span className="theme-copy text-sm leading-6">
+                        Beat this by directly answering: {item.charAt(0).toLowerCase()}
+                        {item.slice(1)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button
             type="button"
             disabled={isPending}
@@ -291,6 +436,108 @@ export default function Home() {
           </p>
         </section>
       </div>
+
+      {recentRounds.length > 0 ? (
+        <section className="mx-auto mt-8 max-w-6xl">
+          <div className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <p className="theme-kicker text-xs uppercase tracking-[0.32em]">
+                  Round history
+                </p>
+                <h2 className="mt-3 text-3xl font-semibold">Jump back into your best work</h2>
+              </div>
+              <p className="theme-copy max-w-2xl text-sm leading-6">
+                Recent rounds stay on this device so you can resume live debates, reopen reports,
+                and replay good matchups without rebuilding the setup.
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-4 xl:grid-cols-2">
+              {recentRounds.map((round) => {
+                const badgeClass =
+                  round.result === "win"
+                    ? "theme-status-anchor"
+                    : round.result === "loss"
+                      ? "theme-status-collapse"
+                      : round.result === "live"
+                        ? "theme-flag-low"
+                        : "theme-status-developing";
+                const badgeLabel =
+                  round.result === "live"
+                    ? "Live round"
+                    : round.result === "tie"
+                      ? "Tie"
+                      : round.result.toUpperCase();
+
+                return (
+                  <article
+                    key={round.sessionId}
+                    className="theme-surface rounded-[1.6rem] border p-5"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="max-w-2xl">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${badgeClass}`}
+                          >
+                            {badgeLabel}
+                          </span>
+                          {round.active ? (
+                            <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.16em]">
+                              Current session
+                            </span>
+                          ) : null}
+                        </div>
+                        <h3 className="mt-3 text-2xl font-semibold">{round.topic}</h3>
+                        <p className="theme-copy mt-3 text-sm leading-6">
+                          {round.persona} in {round.mode} mode. {round.turns} user turn
+                          {round.turns === 1 ? "" : "s"} logged. Updated{" "}
+                          {formatRelativeTime(round.updatedAt)}.
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                          Score
+                        </p>
+                        <p className="mt-2 text-3xl font-semibold">
+                          {round.score ?? "--"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="theme-subcard mt-5 rounded-[1.3rem] border p-4">
+                      <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                        Stored coach read
+                      </p>
+                      <p className="theme-copy mt-2 text-sm leading-6">
+                        {round.analysisSummary ??
+                          "No full report saved yet. Resume the round or open it to generate feedback."}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <Link
+                        href={`/debate?session=${round.sessionId}`}
+                        className="theme-button-secondary inline-flex rounded-full border px-4 py-2 text-sm font-medium transition"
+                      >
+                        Resume round
+                      </Link>
+                      <Link
+                        href={`/results?session=${round.sessionId}`}
+                        className="theme-button-primary inline-flex rounded-full px-4 py-2 text-sm font-semibold transition"
+                      >
+                        Open report
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

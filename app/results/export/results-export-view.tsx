@@ -681,6 +681,65 @@ export default function ResultsExportView({
           </div>
         </section>
 
+        <section className="export-section mt-8 grid gap-5 md:grid-cols-2">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Judge simulator
+            </p>
+            <div className="mt-4 space-y-4">
+              {reportInsights.judgePerspectives.map((item) => (
+                <article
+                  key={item.label}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-slate-950">
+                      {item.label}
+                    </p>
+                    <span className="rounded-full border border-slate-200 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                      {item.verdict}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">{item.note}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    How to win this ballot
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-800">
+                    {item.nextMove}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Rematch script
+            </p>
+            <div className="mt-4 space-y-4">
+              {reportInsights.rematchScript.map((item, index) => (
+                <article
+                  key={item.label}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="export-plan-index">{index + 1}</div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {item.label}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-950">
+                        {item.line}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">{item.note}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="export-section mt-8">
           <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
@@ -854,6 +913,91 @@ export default function ResultsExportView({
                   <p className="mt-1 text-sm leading-6 text-slate-800">
                     {item.fix}
                   </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="export-section mt-8 grid gap-5 md:grid-cols-2">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Counterplay lab
+            </p>
+            <div className="mt-4 space-y-4">
+              {reportInsights.counterplayMoves.map((item) => (
+                <article
+                  key={`${item.title}-${item.trigger}`}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <p className="text-sm font-semibold text-slate-950">{item.title}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Likely trigger
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{item.trigger}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Why it lands
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{item.why}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Best answer
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-800">{item.answer}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Evidence upgrade
+            </p>
+            <div className="mt-4 space-y-4">
+              {reportInsights.evidenceUpgrades.map((item) => (
+                <article
+                  key={`${item.title}-${item.claim}`}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <p className="text-sm font-semibold text-slate-950">{item.title}</p>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">{item.claim}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Proof needed
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{item.proofNeed}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Best source angle
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-800">{item.sourceAngle}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="export-section mt-8">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Language tuning
+            </p>
+            <div className="mt-4 grid gap-4 md:grid-cols-3">
+              {reportInsights.languageTweaks.map((item) => (
+                <article
+                  key={item.label}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <p className="text-sm font-semibold text-slate-950">{item.label}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Use
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-800">{item.useLine}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Avoid
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{item.avoidLine}</p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Why
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">{item.reason}</p>
                 </article>
               ))}
             </div>

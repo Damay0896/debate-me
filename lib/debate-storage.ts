@@ -108,6 +108,33 @@ export function loadActiveSession() {
   return sessionId ? loadSession(sessionId) : null;
 }
 
+export function listStoredSessions() {
+  if (!canUseStorage()) {
+    return [] as DebateSession[];
+  }
+
+  const sessions: DebateSession[] = [];
+
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+
+    if (!key || !key.startsWith(SESSION_PREFIX)) {
+      continue;
+    }
+
+    const session = coerceDebateSession(readJson<unknown>(key));
+
+    if (session) {
+      sessions.push(session);
+    }
+  }
+
+  return sessions.sort(
+    (left, right) =>
+      new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+  );
+}
+
 export function saveAnalysis(
   session: Pick<DebateSession, "id" | "messages" | "updatedAt">,
   analysis: DebateAnalysis,

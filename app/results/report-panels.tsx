@@ -526,6 +526,196 @@ function CaseRepairPanel({
   );
 }
 
+function JudgeSimulationPanel({
+  judgePerspectives,
+}: {
+  judgePerspectives: ReturnType<typeof buildReportInsights>["judgePerspectives"];
+}) {
+  return (
+    <div className="grid gap-4">
+      {judgePerspectives.map((judge) => (
+        <article
+          key={judge.label}
+          className="theme-surface rounded-[1.6rem] border p-5"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                {judge.label}
+              </p>
+              <p className="theme-strong mt-2 text-lg font-semibold">
+                {judge.verdict}
+              </p>
+            </div>
+            <span
+              className={cx(
+                "rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]",
+                toneStyles[judge.tone],
+              )}
+            >
+              Judge sim
+            </span>
+          </div>
+
+          <p className="theme-copy mt-4 text-sm leading-6">{judge.note}</p>
+
+          <div className="theme-subcard mt-4 rounded-[1.2rem] border p-4">
+            <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+              How to win this ballot
+            </p>
+            <p className="theme-strong mt-2 text-sm leading-6">{judge.nextMove}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function RematchScriptPanel({
+  rematchScript,
+}: {
+  rematchScript: ReturnType<typeof buildReportInsights>["rematchScript"];
+}) {
+  return (
+    <div className="grid gap-4">
+      {rematchScript.map((step, index) => (
+        <article
+          key={step.label}
+          className="theme-surface rounded-[1.6rem] border p-5"
+        >
+          <div className="flex items-start gap-3">
+            <div className="theme-accent-chip flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold">
+              {index + 1}
+            </div>
+            <div>
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                {step.label}
+              </p>
+              <p className="theme-strong mt-2 text-lg font-semibold">
+                {step.line}
+              </p>
+            </div>
+          </div>
+          <p className="theme-copy mt-4 text-sm leading-6">{step.note}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function CounterplayLabPanel({
+  counterplayMoves,
+}: {
+  counterplayMoves: ReturnType<typeof buildReportInsights>["counterplayMoves"];
+}) {
+  return (
+    <div className="grid gap-4">
+      {counterplayMoves.map((move) => (
+        <article
+          key={`${move.title}-${move.trigger}`}
+          className="theme-surface rounded-[1.6rem] border p-5"
+        >
+          <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+            {move.title}
+          </p>
+          <div className="theme-subcard mt-4 rounded-[1.2rem] border p-4">
+            <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+              Likely trigger
+            </p>
+            <p className="theme-strong mt-2 text-sm leading-6">{move.trigger}</p>
+          </div>
+          <div className="mt-4 grid gap-3">
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Why it lands
+              </p>
+              <p className="theme-copy mt-2 text-sm leading-6">{move.why}</p>
+            </div>
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Best answer
+              </p>
+              <p className="theme-strong mt-2 text-sm leading-6">{move.answer}</p>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function EvidenceUpgradePanel({
+  evidenceUpgrades,
+}: {
+  evidenceUpgrades: ReturnType<typeof buildReportInsights>["evidenceUpgrades"];
+}) {
+  return (
+    <div className="grid gap-4">
+      {evidenceUpgrades.map((item) => (
+        <article
+          key={`${item.title}-${item.claim}`}
+          className="theme-surface rounded-[1.6rem] border p-5"
+        >
+          <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+            {item.title}
+          </p>
+          <p className="theme-strong mt-3 text-base leading-7">{item.claim}</p>
+          <div className="mt-4 grid gap-3">
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Proof needed
+              </p>
+              <p className="theme-copy mt-2 text-sm leading-6">{item.proofNeed}</p>
+            </div>
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Best source angle
+              </p>
+              <p className="theme-strong mt-2 text-sm leading-6">{item.sourceAngle}</p>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function LanguageTuningPanel({
+  languageTweaks,
+}: {
+  languageTweaks: ReturnType<typeof buildReportInsights>["languageTweaks"];
+}) {
+  return (
+    <div className="grid gap-4">
+      {languageTweaks.map((item) => (
+        <article
+          key={item.label}
+          className="theme-surface rounded-[1.6rem] border p-5"
+        >
+          <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+            {item.label}
+          </p>
+          <div className="mt-4 grid gap-3">
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Use this line shape
+              </p>
+              <p className="theme-strong mt-2 text-sm leading-6">{item.useLine}</p>
+            </div>
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Avoid this move
+              </p>
+              <p className="theme-copy mt-2 text-sm leading-6">{item.avoidLine}</p>
+            </div>
+          </div>
+          <p className="theme-copy mt-4 text-sm leading-6">{item.reason}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function MapNodeCard({
   label,
   eyebrow,
@@ -1099,6 +1289,16 @@ export function ResultsReportPanels({
               />
             </Panel>
           </div>
+
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Judge Simulator"
+              title="How different judges would read the same round"
+              description="Not every ballot sees the debate through the same lens. This shows what changes when the judging standard shifts."
+            >
+              <JudgeSimulationPanel judgePerspectives={insights.judgePerspectives} />
+            </Panel>
+          </div>
         </div>
       </section>
 
@@ -1145,6 +1345,26 @@ export function ResultsReportPanels({
               description="This turns the report into a practical rematch plan: how to open, how to answer pressure, and how to close with intent."
             >
               <ReplayBlueprintPanel replaySteps={insights.replaySteps} />
+            </Panel>
+          </div>
+
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Rematch Script"
+              title="A cleaner opener, proof step, answer, and close"
+              description="This is the short script version of the report: what to say first, what to prove, how to answer pressure, and how to end."
+            >
+              <RematchScriptPanel rematchScript={insights.rematchScript} />
+            </Panel>
+          </div>
+
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Counterplay Lab"
+              title="What they are likely to do next and your best answer"
+              description="The rematch is not only about your offense. It is also about predicting the next pressure move before it lands."
+            >
+              <CounterplayLabPanel counterplayMoves={insights.counterplayMoves} />
             </Panel>
           </div>
         </div>
@@ -1202,6 +1422,26 @@ export function ResultsReportPanels({
                 caseRepairs={insights.caseRepairs}
                 weakestMetricLabel={insights.weakestMetric?.label ?? null}
               />
+            </Panel>
+          </div>
+
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Evidence Upgrade"
+              title="Exactly where stronger proof would change the round"
+              description="This isolates the claims that needed better evidence and the kind of source that would have done the most work."
+            >
+              <EvidenceUpgradePanel evidenceUpgrades={insights.evidenceUpgrades} />
+            </Panel>
+          </div>
+
+          <div className="report-masonry-item">
+            <Panel
+              eyebrow="Language Tuning"
+              title="Sharper sentence shapes for the rematch"
+              description="Sometimes the fastest upgrade is not a new idea but a stronger line shape that carries proof, clash, and weighing more clearly."
+            >
+              <LanguageTuningPanel languageTweaks={insights.languageTweaks} />
             </Panel>
           </div>
         </div>

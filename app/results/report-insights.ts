@@ -62,6 +62,41 @@ export type CaseRepair = {
   weakness: string;
 };
 
+export type JudgePerspective = {
+  label: string;
+  nextMove: string;
+  note: string;
+  tone: "accent" | "neutral" | "warning";
+  verdict: string;
+};
+
+export type RematchScriptStep = {
+  label: string;
+  line: string;
+  note: string;
+};
+
+export type CounterplayMove = {
+  answer: string;
+  title: string;
+  trigger: string;
+  why: string;
+};
+
+export type EvidenceUpgrade = {
+  claim: string;
+  proofNeed: string;
+  sourceAngle: string;
+  title: string;
+};
+
+export type LanguageTweak = {
+  avoidLine: string;
+  label: string;
+  reason: string;
+  useLine: string;
+};
+
 const personaPrefacePattern =
   /\b(i am using a .*inspired|inspired lane here|i will answer in one tight paragraph|quick premise stacking)\b/i;
 
@@ -306,6 +341,50 @@ function buildTempoLabel(averageWords: number) {
     note: "The round moved quickly, but some turns needed one more sentence of warrant or impact.",
     value: "Rapid",
   };
+}
+
+function buildJudgePerspective(
+  label: string,
+  score: number,
+  overallResult: DebateAnalysis["result"],
+  note: string,
+  nextMove: string,
+) {
+  const tone = getMetricTone(score);
+
+  if (
+    (overallResult === "win" && score >= 58) ||
+    (overallResult === "tie" && score >= 64)
+  ) {
+    return {
+      label,
+      nextMove,
+      note,
+      tone,
+      verdict: "Likely votes user",
+    } satisfies JudgePerspective;
+  }
+
+  if (
+    (overallResult === "loss" && score <= 58) ||
+    (overallResult === "tie" && score <= 48)
+  ) {
+    return {
+      label,
+      nextMove,
+      note,
+      tone: "warning" as const,
+      verdict: "Likely votes AI opponent",
+    } satisfies JudgePerspective;
+  }
+
+  return {
+    label,
+    nextMove,
+    note,
+    tone: "neutral" as const,
+    verdict: "Flippable with cleaner framing",
+  } satisfies JudgePerspective;
 }
 
 export function buildReportInsights(
@@ -648,14 +727,222 @@ export function buildReportInsights(
       weakness: frame.vulnerability,
     }));
 
+  const logicMetric = getMetric(analysis.metrics, "logic");
+  const persuasionMetric = getMetric(analysis.metrics, "persuasion");
+  const techJudgeScore = Math.round(
+    (logicMetric.score + evidenceMetric.score + rebuttalMetric.score) / 3,
+  );
+  const layJudgeScore = Math.round(
+    (clarityMetric.score + persuasionMetric.score + disciplineMetric.score) / 3,
+  );
+  const policyJudgeScore = Math.round(
+    (logicMetric.score + evidenceMetric.score + weighingMetric.score) / 3,
+  );
+
+  const judgePerspectives: JudgePerspective[] = [
+    buildJudgePerspective(
+      "Tech judge",
+      techJudgeScore,
+      analysis.result,
+      "This judge is tracking warrants, answers to pressure, and whether your evidence actually closes the loop.",
+      evidenceMetric.score < 60
+        ? "Attach one concrete proof source before the round becomes a battle of unsupported confidence."
+        : "Collapse to your cleanest warrant and make the clash explicit instead of spreading across too many points.",
+    ),
+    buildJudgePerspective(
+      "Lay judge",
+      layJudgeScore,
+      analysis.result,
+      "This judge mainly cares whether the story is easy to follow, emotionally legible, and memorable at the end.",
+      clarityMetric.score < 62
+        ? "Simplify your first sentence and turn one abstract claim into a vivid real-world example."
+        : "Repeat the cleanest impact line twice so the ballot path feels obvious, not merely available.",
+    ),
+    buildJudgePerspective(
+      "Policy judge",
+      policyJudgeScore,
+      analysis.result,
+      "This judge wants comparative impacts, proof, and a reason your world is the better tradeoff under pressure.",
+      weighingMetric.score < 60
+        ? "End the round with one comparative sentence that explains why your downside outweighs theirs."
+        : "Spend less time restating offense and more time quantifying the cost of the other side's world.",
+    ),
+  ];
+
+  const strongestFrame = analysis.argumentFrames[0];
+  const rematchScript: RematchScriptStep[] = [
+    {
+      label: "Open",
+      line: clampText(
+        bestUserMessage?.text ??
+          strongestFrame?.claim ??
+          analysis.strongestArgument,
+        190,
+      ),
+      note:
+        "Lead with the strongest claim you already had, but immediately attach one concrete example so it sounds like evidence instead of atmosphere.",
+    },
+    {
+      label: "Prove it",
+      line: clampText(
+        analysis.missedOpportunities[0]?.betterVersion ??
+          analysis.bestNextImprovement.drill,
+        190,
+      ),
+      note:
+        "This is the proof step that prevents the opponent from winning by yelling 'unsupported' for the rest of the round.",
+    },
+    {
+      label: "Answer pressure",
+      line: clampText(
+        analysis.opponentCaseReview.bestCounter,
+        190,
+      ),
+      note:
+        "The moment their best point shows up, answer it directly before extending anything else.",
+    },
+    {
+      label: "Close",
+      line: clampText(analysis.flipSentence, 190),
+      note:
+        "Finish on comparison, not repetition. Tell the judge exactly why your impact matters more.",
+    },
+  ];
+
+  const counterplayMoves: CounterplayMove[] = [
+    {
+      answer: clampText(
+        analysis.collapsePoints[0]?.repair ?? analysis.bestNextImprovement.drill,
+        190,
+      ),
+      title: "If they hit your softest leak",
+      trigger: clampText(
+        analysis.collapsePoints[0]?.trigger ?? analysis.biggestUserMistake,
+        170,
+      ),
+      why: clampText(
+        analysis.collapsePoints[0]?.whyItBreaks ??
+          "This attack lands because the underlying warrant still feels underbuilt.",
+        180,
+      ),
+    },
+    {
+      answer: clampText(analysis.opponentCaseReview.bestCounter, 190),
+      title: "If they return to their best point",
+      trigger: clampText(analysis.opponentCaseReview.strongestPoint, 170),
+      why: clampText(analysis.opponentCaseReview.whyItWorked, 180),
+    },
+    {
+      answer: clampText(
+        strongestFrame
+          ? `${getOpeningClause(strongestFrame.warrant)} Then cash it out: ${getOpeningClause(strongestFrame.impact)}`
+          : analysis.flipSentence,
+        190,
+      ),
+      title: "If they press the core claim",
+      trigger: clampText(
+        strongestFrame?.vulnerability ?? analysis.biggestUserMistake,
+        170,
+      ),
+      why: "This is the path a sharp opponent uses to turn your best argument into a maybe instead of a ballot reason.",
+    },
+  ];
+
+  const evidenceUpgrades: EvidenceUpgrade[] = [
+    {
+      claim: clampText(strongestFrame?.claim ?? analysis.strongestArgument, 170),
+      proofNeed:
+        evidenceMetric.score < 55
+          ? "Attach a study, statistic, or recent example that makes this claim expensive to deny."
+          : "Upgrade the claim with one comparative data point so it survives under cross-ex.",
+      sourceAngle:
+        weighingMetric.score < 60
+          ? "Use a comparison source that shows scale, not just existence."
+          : "Use a concrete case study that proves the mechanism, not just the headline.",
+      title: "Proof the main ballot issue",
+    },
+    {
+      claim: clampText(
+        analysis.opponentCaseReview.strongestPoint,
+        170,
+      ),
+      proofNeed:
+        "Prepare one source or example that undercuts the other side's best sentence before it becomes the judge's default lens.",
+      sourceAngle:
+        "Best source type: counterexample, trend reversal, or case study that shows their benefit claim collapsing in practice.",
+      title: "Pre-answer the opponent's best point",
+    },
+    {
+      claim: clampText(
+        analysis.biggestUserMistake,
+        170,
+      ),
+      proofNeed:
+        "This part needs a tighter warrant plus proof, not just better wording.",
+      sourceAngle:
+        logicMetric.score < 60
+          ? "Best source type: causal mechanism, expert reasoning, or before-and-after comparison."
+          : "Best source type: concise empirical example that stops the round from feeling speculative.",
+      title: "Patch the structural leak",
+    },
+  ];
+
+  const weakestFrame = analysis.argumentFrames[analysis.argumentFrames.length - 1];
+  const languageTweaks: LanguageTweak[] = [
+    {
+      avoidLine: "This is obviously true and everyone knows it.",
+      label: "Proof language",
+      reason:
+        evidenceMetric.score < 60
+          ? "Right now the round is too easy to dismiss as assertion. Make the source do the work, not your confidence."
+          : "Even a decent evidence round gets stronger when the proof arrives early and cleanly.",
+      useLine: `According to ${session.topic.toLowerCase().includes("ai") ? "recent evidence" : "the clearest available evidence"}, ${getOpeningClause(
+        analysis.strongestArgument,
+      ).toLowerCase()}`,
+    },
+    {
+      avoidLine: "They are just wrong.",
+      label: "Clash language",
+      reason:
+        rebuttalMetric.score < 60
+          ? "You need language that names the opponent's assumption before it names your conclusion."
+          : "Direct clash reads sharper than generic dismissal, especially late in the round.",
+      useLine: `Even if ${getOpeningClause(
+        analysis.opponentCaseReview.strongestPoint,
+      ).toLowerCase()}, that still fails because ${getOpeningClause(
+        analysis.opponentCaseReview.bestCounter,
+      ).toLowerCase()}`,
+    },
+    {
+      avoidLine: "It's better overall.",
+      label: "Judge instruction",
+      reason:
+        weighingMetric.score < 60
+          ? "The round still needs a sentence that tells the judge how to decide, not just what to think."
+          : "Good rounds become ballots when the comparison is explicit, not implied.",
+      useLine: weakestFrame
+        ? `The judge should prefer my side because ${getOpeningClause(
+            weakestFrame.impact,
+          ).toLowerCase()} matters more than their best response.`
+        : `The judge should prefer my side because ${getOpeningClause(
+            analysis.flipSentence,
+          ).toLowerCase()}`,
+    },
+  ];
+
   return {
     ballotCallouts,
     caseRepairs,
+    counterplayMoves,
     drillQuestions,
+    evidenceUpgrades,
     hasTranscriptArchive,
+    judgePerspectives,
+    languageTweaks,
     patternStats,
     profileSignals,
     quoteInsights,
+    rematchScript,
     replaySteps,
     totalWords,
     turnCount: userMessages.length,
