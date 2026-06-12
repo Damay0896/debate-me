@@ -125,7 +125,9 @@ export default function ResultsExportView({
     );
   }
 
-  const opponentPersonality = getOpponentPersonalityMeta(session.opponentPersonality);
+  const opponentPersonality = getOpponentPersonalityMeta(
+    session.opponentPersonality,
+  );
   const replyStyle = getReplyStyleMeta(session.replyStyle);
   const winnerLabel = getDisplayWinnerLabel(report.winner);
   const replayFocus = cleanReplayFocus(report.replayFocus);
@@ -159,7 +161,7 @@ export default function ResultsExportView({
                 {session.topic}
               </h1>
               <p className="mt-4 text-sm leading-6 text-slate-600">
-                {session.userSide} vs {session.opponentSide} • {opponentPersonality.label} mode •{" "}
+                {session.userSide} vs {session.opponentSide} | {opponentPersonality.label} mode |{" "}
                 {replyStyle.label} replies
               </p>
             </div>
@@ -168,7 +170,9 @@ export default function ResultsExportView({
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
                 Overall score
               </p>
-              <p className="mt-2 text-4xl font-semibold text-slate-950">{report.score}</p>
+              <p className="mt-2 text-4xl font-semibold text-slate-950">
+                {report.score}
+              </p>
             </div>
           </div>
         </header>
@@ -210,7 +214,9 @@ export default function ResultsExportView({
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
                 Replay focus
               </p>
-              <p className="mt-2 text-sm leading-6 text-slate-800">{replayFocus}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-800">
+                {replayFocus}
+              </p>
             </div>
           </div>
         </section>
@@ -220,7 +226,57 @@ export default function ResultsExportView({
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
               Summary
             </p>
-            <p className="mt-4 text-base leading-8 text-slate-800">{report.summary}</p>
+            <p className="mt-4 text-base leading-8 text-slate-800">
+              {report.summary}
+            </p>
+          </div>
+        </section>
+
+        <section className="export-section mt-8">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Transcript receipts
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-950">
+              Specific moments from the round
+            </h2>
+            <div className="mt-5 grid gap-4">
+              {report.transcriptReceipts.map((receipt) => (
+                <article
+                  key={receipt.id}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-950">
+                        {receipt.title}
+                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {receipt.speaker}
+                      </p>
+                    </div>
+                    <span className="rounded-full border border-slate-200 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                      Receipt
+                    </span>
+                  </div>
+                  <p className="mt-4 rounded-[0.9rem] bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900">
+                    {receipt.quote}
+                  </p>
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Why it mattered
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {receipt.diagnosis}
+                  </p>
+                  <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Coach fix
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-800">
+                    {receipt.fix}
+                  </p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
@@ -229,13 +285,17 @@ export default function ResultsExportView({
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
               Strongest argument
             </p>
-            <p className="mt-4 text-sm leading-7 text-slate-800">{report.strongestArgument}</p>
+            <p className="mt-4 text-sm leading-7 text-slate-800">
+              {report.strongestArgument}
+            </p>
           </div>
           <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
               Flip sentence
             </p>
-            <p className="mt-4 text-sm leading-7 text-slate-800">{report.flipSentence}</p>
+            <p className="mt-4 text-sm leading-7 text-slate-800">
+              {report.flipSentence}
+            </p>
           </div>
         </section>
 
@@ -244,14 +304,31 @@ export default function ResultsExportView({
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
               Your biggest mistake
             </p>
-            <p className="mt-4 text-sm leading-7 text-slate-800">{report.biggestUserMistake}</p>
+            <p className="mt-4 text-sm leading-7 text-slate-800">
+              {report.biggestUserMistake}
+            </p>
           </div>
           <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
-              AI opponent mistake
+              Opponent strongest part
             </p>
-            <p className="mt-4 text-sm leading-7 text-slate-800">
-              {report.biggestOpponentMistake}
+            <h2 className="mt-3 text-xl font-semibold text-slate-950">
+              {report.opponentCaseReview.strongestPoint}
+            </h2>
+            <p className="mt-4 rounded-[0.9rem] bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-900">
+              {report.opponentCaseReview.strongestQuote}
+            </p>
+            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Why it landed
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-700">
+              {report.opponentCaseReview.whyItWorked}
+            </p>
+            <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Best counter
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-800">
+              {report.opponentCaseReview.bestCounter}
             </p>
           </div>
         </section>
@@ -280,7 +357,10 @@ export default function ResultsExportView({
                 </thead>
                 <tbody>
                   {report.metrics.map((metric) => (
-                    <tr key={metric.key} className="border-t border-slate-200 align-top">
+                    <tr
+                      key={metric.key}
+                      className="border-t border-slate-200 align-top"
+                    >
                       <td className="px-4 py-4 text-sm font-semibold text-slate-900">
                         {metric.label}
                       </td>
@@ -305,7 +385,9 @@ export default function ResultsExportView({
             </p>
             <div className="mt-4 space-y-4">
               <div>
-                <p className="text-sm font-semibold text-slate-950">Keep doing this</p>
+                <p className="text-sm font-semibold text-slate-950">
+                  Keep doing this
+                </p>
                 <ul className="export-list mt-2 space-y-2">
                   {report.strengths.map((item) => (
                     <li key={item}>{item}</li>
@@ -313,7 +395,9 @@ export default function ResultsExportView({
                 </ul>
               </div>
               <div>
-                <p className="text-sm font-semibold text-slate-950">Still leaking here</p>
+                <p className="text-sm font-semibold text-slate-950">
+                  Still leaking here
+                </p>
                 <ul className="export-list mt-2 space-y-2">
                   {report.weaknesses.map((item) => (
                     <li key={item}>{item}</li>
@@ -323,6 +407,113 @@ export default function ResultsExportView({
             </div>
           </div>
 
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Missed arguments
+            </p>
+            <div className="mt-4 space-y-4">
+              {report.missedOpportunities.map((item, index) => (
+                <article
+                  key={`${item.title}-${index}`}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="export-plan-index">{index + 1}</div>
+                    <h3 className="text-base font-semibold text-slate-950">
+                      {item.title}
+                    </h3>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-slate-700">
+                    {item.missedArgument}
+                  </p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Why it was there
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {item.whyItWasAvailable}
+                  </p>
+                  <p className="mt-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Better version
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-800">
+                    {item.betterVersion}
+                  </p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="export-section mt-8">
+          <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
+              Premise to claim structure
+            </p>
+            <div className="mt-5 grid gap-4">
+              {report.argumentFrames.map((frame) => (
+                <article
+                  key={frame.id}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        {frame.title}
+                      </p>
+                      <h3 className="mt-2 text-lg font-semibold text-slate-950">
+                        {frame.claim}
+                      </h3>
+                    </div>
+                    <span className="rounded-full border border-slate-200 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                      {frame.status.replace("-", " ")}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Premises
+                      </p>
+                      <ul className="export-list mt-2 space-y-2">
+                        {frame.premises.map((premise) => (
+                          <li key={premise}>{premise}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Warrant
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-slate-700">
+                          {frame.warrant}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Impact
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-slate-700">
+                          {frame.impact}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                          Weak point
+                        </p>
+                        <p className="mt-1 text-sm leading-6 text-slate-700">
+                          {frame.vulnerability}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="export-section mt-8">
           <div className="export-card rounded-[1.3rem] border border-slate-200 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
               Next round plan
@@ -345,15 +536,28 @@ export default function ResultsExportView({
             </p>
             <div className="mt-5 grid gap-4">
               {report.collapsePoints.map((point, index) => (
-                <article key={`${point.title}-${index}`} className="rounded-[1rem] border border-slate-200 p-4">
+                <article
+                  key={`${point.title}-${index}`}
+                  className="rounded-[1rem] border border-slate-200 p-4"
+                >
                   <div className="flex items-center gap-3">
                     <div className="export-plan-index">{index + 1}</div>
-                    <h3 className="text-base font-semibold text-slate-950">{point.title}</h3>
+                    <h3 className="text-base font-semibold text-slate-950">
+                      {point.title}
+                    </h3>
                   </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-900">Attack</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">{point.trigger}</p>
-                  <p className="mt-3 text-sm font-semibold text-slate-900">One-sentence fix</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-700">{point.repair}</p>
+                  <p className="mt-3 text-sm font-semibold text-slate-900">
+                    Attack
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {point.trigger}
+                  </p>
+                  <p className="mt-3 text-sm font-semibold text-slate-900">
+                    One-sentence fix
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-slate-700">
+                    {point.repair}
+                  </p>
                 </article>
               ))}
             </div>
@@ -361,7 +565,7 @@ export default function ResultsExportView({
         </section>
 
         <footer className="mt-8 border-t border-slate-200 pt-5 text-xs leading-6 text-slate-500">
-          Export generated from Debate Me feedback. Use your browser&apos;s “Save as PDF”
+          Export generated from Debate Me feedback. Use your browser&apos;s &quot;Save as PDF&quot;
           option after pressing Print.
         </footer>
       </article>

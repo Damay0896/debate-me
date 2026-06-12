@@ -5,13 +5,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import type {
   ArgumentFrame,
   ArgumentMap,
-  ArgumentMapEdge,
-  ArgumentMapNode,
   CollapsePoint,
   DebateAnalysis,
   DebateMetric,
   FallacyFlag,
+  MissedOpportunity,
   MomentumBeat,
+  OpponentCaseReview,
+  TranscriptReceipt,
 } from "@/lib/debate";
 
 const metricGlow: Record<DebateMetric["key"], string> = {
@@ -41,70 +42,8 @@ const collapseSeverityStyles: Record<CollapsePoint["severity"], string> = {
   high: "theme-flag-high",
 };
 
-const relationColors: Record<ArgumentMapEdge["relation"], string> = {
-  supports: "#f4c34d",
-  attacks: "#fb923c",
-  depends: "#8b5cf6",
-};
-
-const nodeColors: Record<ArgumentMapNode["kind"], { fill: string; stroke: string }> = {
-  premise: { fill: "var(--map-premise-fill)", stroke: "var(--map-premise-stroke)" },
-  claim: { fill: "var(--map-claim-fill)", stroke: "var(--map-claim-stroke)" },
-  impact: { fill: "var(--map-impact-fill)", stroke: "var(--map-impact-stroke)" },
-  counter: { fill: "var(--map-counter-fill)", stroke: "var(--map-counter-stroke)" },
-  assumption: { fill: "var(--map-assumption-fill)", stroke: "var(--map-assumption-stroke)" },
-};
-
 function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
-}
-
-function wrapText(value: string, maxChars: number) {
-  const words = value.trim().split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
-
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-
-    if (next.length <= maxChars) {
-      current = next;
-      continue;
-    }
-
-    if (current) {
-      lines.push(current);
-      current = word;
-    } else {
-      lines.push(word.slice(0, maxChars));
-      current = "";
-    }
-
-    if (lines.length === 3) {
-      return [lines[0], lines[1], `${lines[2].replace(/[. ]+$/, "")}...`];
-    }
-  }
-
-  if (current) {
-    lines.push(current);
-  }
-
-  return lines.slice(0, 3);
-}
-
-function mapNodePosition(node: ArgumentMapNode) {
-  const columnX = [154, 450, 746] as const;
-  return {
-    x: columnX[node.column],
-    y: 112 + node.row * 102,
-  };
-}
-
-function getNodeDimensions(node: ArgumentMapNode, lineCount: number) {
-  const width = node.kind === "claim" ? 214 : node.kind === "impact" ? 220 : 208;
-  const height = Math.max(84, 50 + Math.max(1, lineCount) * 16);
-
-  return { width, height };
 }
 
 function describeMetricTier(score: number) {
@@ -143,7 +82,7 @@ function Panel({
   return (
     <section
       id={id}
-      className="theme-card report-panel-shell report-rise scroll-mt-28 rounded-[2rem] border p-6 shadow-xl backdrop-blur"
+      className="theme-card report-panel-shell report-rise scroll-mt-28 self-start rounded-[2rem] border p-6 shadow-xl backdrop-blur"
     >
       <p className="theme-muted text-xs uppercase tracking-[0.32em]">{eyebrow}</p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -324,169 +263,153 @@ function BestNextImprovementCard({ analysis }: { analysis: DebateAnalysis }) {
   );
 }
 
-function ArgumentMapDiagram({ argumentMap }: { argumentMap: ArgumentMap }) {
-  const nodesById = new Map(argumentMap.nodes.map((node) => [node.id, node]));
-  const nodeLayouts = new Map(
-    argumentMap.nodes.map((node) => {
-      const textLines = wrapText(
-        node.label,
-        node.kind === "impact" || node.kind === "counter" ? 28 : 24,
-      );
-
-      return [
-        node.id,
-        {
-          position: mapNodePosition(node),
-          textLines,
-          ...getNodeDimensions(node, textLines.length),
-        },
-      ] as const;
-    }),
-  );
+function MapNodeCard({
+  label,
+  eyebrow,
+  weight,
+  tone,
+}: {
+  label: string;
+  eyebrow: string;
+  weight: number;
+  tone:
+    | "premise"
+    | "claim"
+    | "impact"
+    | "counter"
+    | "assumption";
+}) {
+  const toneStyles = {
+    premise:
+      "border-[color:var(--map-premise-stroke)] bg-[color:var(--map-premise-fill)]",
+    claim:
+      "border-[color:var(--map-claim-stroke)] bg-[color:var(--map-claim-fill)]",
+    impact:
+      "border-[color:var(--map-impact-stroke)] bg-[color:var(--map-impact-fill)]",
+    counter:
+      "border-[color:var(--map-counter-stroke)] bg-[color:var(--map-counter-fill)]",
+    assumption:
+      "border-[color:var(--map-assumption-stroke)] bg-[color:var(--map-assumption-fill)]",
+  } as const;
 
   return (
-    <div className="theme-surface report-diagram-shell overflow-x-auto rounded-[1.7rem] border p-4">
-      <svg viewBox="0 0 900 432" className="min-w-[48rem]" aria-label="Argument map">
-        <rect x="0" y="0" width="900" height="432" rx="28" fill="var(--diagram-bg)" />
+    <article className={cx("rounded-[1.4rem] border p-4", toneStyles[tone])}>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-[var(--diagram-muted)]">
+          {eyebrow}
+        </p>
+        <span className="rounded-full border border-black/10 bg-white/70 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[var(--diagram-label)]">
+          {weight}
+        </span>
+      </div>
+      <p className="mt-3 text-sm font-medium leading-6 text-[var(--diagram-label)]">
+        {label}
+      </p>
+    </article>
+  );
+}
 
-        {["Premises", "Core claim", "Impact / opponent counter"].map((label, index) => (
-          <text
-            key={label}
-            x={index === 0 ? 154 : index === 1 ? 450 : 746}
-            y="42"
-            fill="var(--diagram-muted)"
-            fontSize="12"
-            textAnchor="middle"
-          >
-            {label}
-          </text>
-        ))}
+function ArgumentMapDiagram({ argumentMap }: { argumentMap: ArgumentMap }) {
+  const premiseNodes = argumentMap.nodes
+    .filter((node) => node.kind === "premise")
+    .sort((left, right) => left.row - right.row);
+  const assumptionNodes = argumentMap.nodes
+    .filter((node) => node.kind === "assumption")
+    .sort((left, right) => left.row - right.row);
+  const claimNode =
+    argumentMap.nodes.find((node) => node.kind === "claim") ?? argumentMap.nodes[0];
+  const rightNodes = argumentMap.nodes
+    .filter((node) => node.kind === "impact" || node.kind === "counter")
+    .sort((left, right) => left.row - right.row);
 
-        {argumentMap.edges.map((edge, index) => {
-          const from = nodesById.get(edge.from);
-          const to = nodesById.get(edge.to);
-          const fromLayout = nodeLayouts.get(edge.from);
-          const toLayout = nodeLayouts.get(edge.to);
-
-          if (!from || !to || !fromLayout || !toLayout) {
-            return null;
-          }
-
-          const fromPos = fromLayout.position;
-          const toPos = toLayout.position;
-          const direction = fromPos.x < toPos.x ? 1 : -1;
-          const x1 = fromPos.x + direction * (fromLayout.width / 2 - 10);
-          const x2 = toPos.x - direction * (toLayout.width / 2 - 10);
-          const midX = (x1 + x2) / 2;
-          const midY = (fromPos.y + toPos.y) / 2;
-          const controlOffset = Math.min(96, Math.max(48, Math.abs(x2 - x1) / 2));
-          const path = `M ${x1} ${fromPos.y} C ${x1 + direction * controlOffset} ${fromPos.y}, ${x2 - direction * controlOffset} ${toPos.y}, ${x2} ${toPos.y}`;
-
-          return (
-            <g key={`${edge.from}-${edge.to}-${index}`}>
-              <path
-                d={path}
-                fill="none"
-                stroke={relationColors[edge.relation]}
-                strokeWidth="2.4"
-                strokeDasharray={edge.relation === "depends" ? "7 7" : undefined}
-                opacity="0.9"
-                strokeLinecap="round"
+  return (
+    <div className="theme-surface report-diagram-shell rounded-[1.7rem] border p-5">
+      <div className="report-map-board">
+        <div className="report-map-column">
+          <div className="flex items-center justify-between gap-3">
+            <p className="theme-muted text-xs uppercase tracking-[0.26em]">Premises</p>
+            <span className="theme-subcard rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]">
+              supports
+            </span>
+          </div>
+          <div className="grid gap-3">
+            {premiseNodes.map((node) => (
+              <MapNodeCard
+                key={node.id}
+                label={node.label}
+                eyebrow="Premise"
+                weight={node.weight}
+                tone="premise"
               />
-              <rect
-                x={midX - 34}
-                y={midY - 11}
-                width="68"
-                height="22"
-                rx="11"
-                fill="var(--diagram-chip)"
-                stroke="var(--diagram-chip-border)"
+            ))}
+            {assumptionNodes.map((node) => (
+              <MapNodeCard
+                key={node.id}
+                label={node.label}
+                eyebrow="Unsupported assumption"
+                weight={node.weight}
+                tone="assumption"
               />
-              <text
-                x={midX}
-                y={midY + 4}
-                fill="var(--diagram-label)"
-                fontSize="10"
-                textAnchor="middle"
-              >
-                {edge.relation}
-              </text>
-            </g>
-          );
-        })}
+            ))}
+          </div>
+        </div>
 
-        {argumentMap.nodes.map((node) => {
-          const layout = nodeLayouts.get(node.id);
+        <div className="report-map-connector hidden xl:flex">
+          <span className="report-map-arrow">Premises -&gt; claim</span>
+        </div>
 
-          if (!layout) {
-            return null;
-          }
+        <div className="report-map-column">
+          <div className="flex items-center justify-between gap-3">
+            <p className="theme-muted text-xs uppercase tracking-[0.26em]">Core claim</p>
+            <span className="theme-subcard rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]">
+              center
+            </span>
+          </div>
+          {claimNode ? (
+            <MapNodeCard
+              label={claimNode.label}
+              eyebrow="Claim"
+              weight={claimNode.weight}
+              tone="claim"
+            />
+          ) : null}
+        </div>
 
-          const position = layout.position;
-          const palette = nodeColors[node.kind];
-          const left = position.x - layout.width / 2;
-          const top = position.y - layout.height / 2;
-          const badgeCenterX = left + layout.width - 24;
-          const headerY = top + 20;
-          const bodyStartY = top + 42;
+        <div className="report-map-connector hidden xl:flex">
+          <span className="report-map-arrow">Claim -&gt; impact / counter</span>
+        </div>
 
-          return (
-            <g key={node.id}>
-              <rect
-                x={left}
-                y={top}
-                width={layout.width}
-                height={layout.height}
-                rx="20"
-                fill={palette.fill}
-                stroke={palette.stroke}
-                strokeWidth="1.7"
+        <div className="report-map-column">
+          <div className="flex items-center justify-between gap-3">
+            <p className="theme-muted text-xs uppercase tracking-[0.26em]">
+              Impact and counter
+            </p>
+            <span className="theme-subcard rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]">
+              pressure
+            </span>
+          </div>
+          <div className="grid gap-3">
+            {rightNodes.map((node) => (
+              <MapNodeCard
+                key={node.id}
+                label={node.label}
+                eyebrow={node.kind === "impact" ? "Impact" : "Opponent counter"}
+                weight={node.weight}
+                tone={node.kind}
               />
-              <text
-                x={left + 18}
-                y={headerY}
-                fill="var(--diagram-muted)"
-                fontSize="9"
-                letterSpacing="1.8"
-              >
-                {node.kind.toUpperCase()}
-              </text>
-              <circle
-                cx={badgeCenterX}
-                cy={headerY - 4}
-                r="12"
-                fill="var(--track)"
-                stroke="var(--diagram-chip-border)"
-              />
-              <text
-                x={badgeCenterX}
-                y={headerY}
-                fill="var(--diagram-label)"
-                fontSize="9"
-                textAnchor="middle"
-              >
-                {node.weight}
-              </text>
-              <text x={left + 18} y={bodyStartY} fill="var(--diagram-label)" fontSize="12">
-                {layout.textLines.map((line, index) => (
-                  <tspan key={`${node.id}-${index}`} x={left + 18} dy={index === 0 ? 0 : 16}>
-                    {line}
-                  </tspan>
-                ))}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
+            ))}
+          </div>
+        </div>
+      </div>
 
-      <div className="mt-4 flex flex-wrap gap-3 text-xs">
+      <div className="mt-5 flex flex-wrap gap-3 text-xs">
         <span className="theme-subcard rounded-full border px-3 py-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--map-premise-stroke)]" />{" "}
           Premise
         </span>
         <span className="theme-subcard rounded-full border px-3 py-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--map-claim-stroke)]" />{" "}
-          Core claim
+          Claim
         </span>
         <span className="theme-subcard rounded-full border px-3 py-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--map-impact-stroke)]" />{" "}
@@ -494,13 +417,143 @@ function ArgumentMapDiagram({ argumentMap }: { argumentMap: ArgumentMap }) {
         </span>
         <span className="theme-subcard rounded-full border px-3 py-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--map-counter-stroke)]" />{" "}
-          Opponent counter
+          Counter
         </span>
         <span className="theme-subcard rounded-full border px-3 py-2">
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--map-assumption-stroke)]" />{" "}
           Unsupported assumption
         </span>
       </div>
+    </div>
+  );
+}
+
+function TranscriptReceipts({
+  receipts,
+}: {
+  receipts: TranscriptReceipt[];
+}) {
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      {receipts.map((receipt) => (
+        <article
+          key={receipt.id}
+          className="theme-surface report-feature-card rounded-[1.65rem] border p-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                {receipt.title}
+              </p>
+              <p className="theme-strong mt-2 text-sm font-semibold uppercase tracking-[0.18em]">
+                {receipt.speaker}
+              </p>
+            </div>
+            <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.16em]">
+              Transcript receipt
+            </span>
+          </div>
+
+          <blockquote className="report-quote mt-4 rounded-[1.45rem] border px-4 py-4 text-base leading-7">
+            {receipt.quote}
+          </blockquote>
+
+          <div className="mt-4 grid gap-3">
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Why it mattered
+              </p>
+              <p className="theme-copy mt-2 text-sm leading-6">{receipt.diagnosis}</p>
+            </div>
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Coach fix
+              </p>
+              <p className="theme-strong mt-2 text-sm leading-6">{receipt.fix}</p>
+            </div>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function OpponentCaseCard({
+  opponentCaseReview,
+}: {
+  opponentCaseReview: OpponentCaseReview;
+}) {
+  return (
+    <article className="theme-surface report-feature-card rounded-[1.7rem] border p-5">
+      <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+        Opponent&apos;s strongest part
+      </p>
+      <h3 className="mt-3 text-2xl font-semibold">
+        {opponentCaseReview.strongestPoint}
+      </h3>
+      <blockquote className="report-quote mt-5 rounded-[1.45rem] border px-4 py-4 text-base leading-7">
+        {opponentCaseReview.strongestQuote}
+      </blockquote>
+      <div className="mt-4 grid gap-3">
+        <div className="theme-subcard rounded-[1.25rem] border p-4">
+          <p className="theme-muted text-xs uppercase tracking-[0.22em]">Why it landed</p>
+          <p className="theme-copy mt-2 text-sm leading-6">
+            {opponentCaseReview.whyItWorked}
+          </p>
+        </div>
+        <div className="theme-subcard rounded-[1.25rem] border p-4">
+          <p className="theme-muted text-xs uppercase tracking-[0.22em]">Best counter</p>
+          <p className="theme-strong mt-2 text-sm leading-6">
+            {opponentCaseReview.bestCounter}
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function MissedOpportunitiesList({
+  opportunities,
+}: {
+  opportunities: MissedOpportunity[];
+}) {
+  return (
+    <div className="grid gap-4">
+      {opportunities.map((item, index) => (
+        <article
+          key={`${item.title}-${index}`}
+          className="theme-surface rounded-[1.55rem] border p-5"
+        >
+          <div className="flex items-start gap-3">
+            <div className="theme-accent-chip flex h-9 w-9 items-center justify-center rounded-full border text-xs font-semibold">
+              {index + 1}
+            </div>
+            <div>
+              <p className="theme-strong text-lg font-semibold">{item.title}</p>
+              <p className="theme-copy mt-2 text-sm leading-6">{item.missedArgument}</p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Why it was available
+              </p>
+              <p className="theme-copy mt-2 text-sm leading-6">
+                {item.whyItWasAvailable}
+              </p>
+            </div>
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Better version
+              </p>
+              <p className="theme-strong mt-2 text-sm leading-6">
+                {item.betterVersion}
+              </p>
+            </div>
+          </div>
+        </article>
+      ))}
     </div>
   );
 }
@@ -630,8 +683,39 @@ export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) 
   return (
     <div className="grid gap-6">
       <section
+        id="receipts"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start"
+      >
+        <Panel
+          eyebrow="Transcript Receipts"
+          title="What the judge actually heard"
+          description="These are the exact moments that helped you, hurt you, or left an upgrade sitting on the table."
+        >
+          <TranscriptReceipts receipts={analysis.transcriptReceipts} />
+        </Panel>
+
+        <div className="grid gap-6 self-start">
+          <Panel
+            eyebrow="Opponent Read"
+            title="Their strongest point and your best counter"
+            description="This isolates the sharpest thing the opponent said and gives you the cleanest answer to it."
+          >
+            <OpponentCaseCard opponentCaseReview={analysis.opponentCaseReview} />
+          </Panel>
+
+          <Panel
+            eyebrow="Missed Arguments"
+            title="Good arguments you left on the table"
+            description="These were available from the transcript you already had, so they are the fastest gains for the replay."
+          >
+            <MissedOpportunitiesList opportunities={analysis.missedOpportunities} />
+          </Panel>
+        </div>
+      </section>
+
+      <section
         id="skills"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start"
       >
         <Panel
           eyebrow="Skill Breakdown"
@@ -662,7 +746,7 @@ export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) 
 
       <section
         id="coach"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.02fr_0.98fr]"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.02fr_0.98fr] xl:items-start"
       >
         <Panel
           eyebrow="Coach Feedback"
@@ -687,7 +771,7 @@ export function ResultsReportPanels({ analysis }: { analysis: DebateAnalysis }) 
 
       <section
         id="map"
-        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]"
+        className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start"
       >
         <Panel
           eyebrow="Argument Map"

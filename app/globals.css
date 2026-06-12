@@ -645,6 +645,49 @@ html[data-theme="light"] .theme-accent-chip {
   position: relative;
 }
 
+.report-action-stack {
+  align-self: flex-start;
+}
+
+.report-map-board {
+  display: grid;
+  gap: 1rem;
+}
+
+.report-map-column {
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+}
+
+.report-map-connector {
+  align-items: center;
+  justify-content: center;
+}
+
+.report-map-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3rem;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  padding: 0 1rem;
+  background: color-mix(in srgb, var(--surface-soft) 90%, transparent);
+  color: var(--foreground-soft);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 1280px) {
+  .report-map-board {
+    grid-template-columns: minmax(0, 1fr) auto minmax(15rem, 0.88fr) auto minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
 .report-quote::before {
   content: "\201C";
 }

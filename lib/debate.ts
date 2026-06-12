@@ -232,6 +232,29 @@ export type BestNextImprovement = {
   drill: string;
 };
 
+export type TranscriptReceipt = {
+  id: string;
+  title: string;
+  speaker: DebateSpeaker;
+  quote: string;
+  diagnosis: string;
+  fix: string;
+};
+
+export type MissedOpportunity = {
+  title: string;
+  missedArgument: string;
+  whyItWasAvailable: string;
+  betterVersion: string;
+};
+
+export type OpponentCaseReview = {
+  strongestPoint: string;
+  strongestQuote: string;
+  whyItWorked: string;
+  bestCounter: string;
+};
+
 export type DebateAnalysis = {
   score: number;
   result: DebateResult;
@@ -255,6 +278,9 @@ export type DebateAnalysis = {
   momentum: MomentumBeat[];
   argumentMap: ArgumentMap;
   bestNextImprovement: BestNextImprovement;
+  transcriptReceipts: TranscriptReceipt[];
+  missedOpportunities: MissedOpportunity[];
+  opponentCaseReview: OpponentCaseReview;
   replayFocus: string;
 };
 
@@ -1730,6 +1756,14 @@ function pickEdgeRelation(
   return fallback;
 }
 
+function pickSpeaker(value: unknown, fallback: DebateSpeaker): DebateSpeaker {
+  if (value === "You" || value === "AI Opponent") {
+    return value;
+  }
+
+  return fallback;
+}
+
 function findFirstMatchingText(values: string[], pattern: RegExp) {
   return values.find((value) => pattern.test(value));
 }
@@ -2363,6 +2397,259 @@ function buildArgumentMap(
     nodes,
     edges,
   };
+}
+
+function scoreStrongMoment(text: string) {
+  return (
+    splitWords(text).length * 0.5 +
+    (hasEvidenceLanguage(text) ? 18 : 0) +
+    (hasWarrantLanguage(text) ? 14 : 0) +
+    (hasWeighingLanguage(text) ? 10 : 0) +
+    (hasDirectClashLanguage(text) ? 8 : 0) +
+    (hasRebuttalLanguage(text) ? 7 : 0) +
+    (hasDefinitionLanguage(text) ? 5 : 0) -
+    (hasAbsoluteLanguage(text) ? 6 : 0)
+  );
+}
+
+function scoreWeakMoment(text: string) {
+  return (
+    (hasAbsoluteLanguage(text) ? 15 : 0) +
+    (!hasEvidenceLanguage(text) ? 12 : 0) +
+    (!hasWarrantLanguage(text) ? 10 : 0) +
+    (!hasWeighingLanguage(text) ? 6 : 0) +
+    (hasDefinitionAmbiguity(text) ? 8 : 0) +
+    (splitWords(text).length < 18 ? 8 : 0)
+  );
+}
+
+function pickMessageByScore(
+  messages: DebateMessage[],
+  scorer: (text: string) => number,
+) {
+  return messages.reduce<DebateMessage | null>((best, message) => {
+    if (!best) {
+      return message;
+    }
+
+    return scorer(message.text) > scorer(best.text) ? message : best;
+  }, null);
+}
+
+function quoteMessage(text: string, maxLength = 180) {
+  return shortenText(cleanText(text), maxLength);
+}
+
+function extractLeadSentence(text: string, maxLength = 120) {
+  const normalized = cleanText(text);
+  const firstSentence = splitSentences(normalized)[0] ?? normalized;
+  return shortenText(firstSentence, maxLength);
+}
+
+function describeOpponentPressure(text: string) {
+  if (hasEvidenceLanguage(text) && hasWarrantLanguage(text)) {
+    return "It sounded dangerous because it paired proof language with a causal story, so it felt more grounded than a naked assertion.";
+  }
+
+  if (hasWeighingLanguage(text)) {
+    return "It worked because it gave the judge a comparison standard instead of just another claim to sort through.";
+  }
+
+  if (hasDefinitionLanguage(text)) {
+    return "It worked because it tried to define the battlefield first and make you argue on terms the opponent chose.";
+  }
+
+  if (hasDirectClashLanguage(text) || hasRebuttalLanguage(text)) {
+    return "It worked because it hit the structure of your case directly instead of merely disagreeing with it.";
+  }
+
+  return "It worked because it sounded cleaner and more self-contained than the answer it got back.";
+}
+
+function buildBestCounter(text: string, topic: string) {
+  const topicLabel = topic.toLowerCase();
+
+  if (hasDefinitionLanguage(text)) {
+    return `Push back on the standard first: explain that the opponent's definition narrows ${topicLabel} in a way that hides the real impact under debate.`;
+  }
+
+  if (hasEvidenceLanguage(text)) {
+    return `Concede the example if needed, then box it in: say that one proof point is too narrow to decide ${topicLabel} and does not outweigh the broader pattern you are defending.`;
+  }
+
+  if (hasWeighingLanguage(text)) {
+    return "Answer with comparison, not denial: even if part of that downside exists, your impact is larger, likelier, or harder to reverse, so it should still decide the ballot.";
+  }
+
+  if (hasWarrantLanguage(text)) {
+    return "Attack the middle step: say the conclusion only follows if the opponent's mechanism is true, and the transcript never actually proved that mechanism.";
+  }
+
+  return "Force the hidden premise into the open: say the point only matters if its unstated assumption is true, then explain why the round never established that step.";
+}
+
+function buildOpponentCaseReview(session: DebateSession): OpponentCaseReview {
+  const opponentMessages = session.messages.filter(
+    (message) => message.speaker === "AI Opponent",
+  );
+  const strongestMessage = pickMessageByScore(opponentMessages, scoreStrongMoment);
+
+  if (!strongestMessage) {
+    return {
+      strongestPoint: "The opponent never built one clear pressure point.",
+      strongestQuote: "No opponent quote was available for review.",
+      whyItWorked:
+        "Without a developed opposing case, the round pressure came more from your own gaps than from a dominant opponent line.",
+      bestCounter:
+        "Keep forcing comparison and proof, because the opponent never established a decisive route to the ballot.",
+    };
+  }
+
+  return {
+    strongestPoint: extractLeadSentence(strongestMessage.text, 110),
+    strongestQuote: quoteMessage(strongestMessage.text, 180),
+    whyItWorked: describeOpponentPressure(strongestMessage.text),
+    bestCounter: buildBestCounter(strongestMessage.text, session.topic),
+  };
+}
+
+function buildMissedOpportunities(
+  session: DebateSession,
+  metrics: DebateMetric[],
+  strongestArgument: string,
+  opponentCaseReview: OpponentCaseReview,
+): MissedOpportunity[] {
+  const userMessages = session.messages.filter((message) => message.speaker === "You");
+  const strongestUserMessage = pickMessageByScore(userMessages, scoreStrongMoment);
+  const focusLine = extractLeadSentence(
+    strongestUserMessage?.text ?? strongestArgument,
+    90,
+  );
+  const missed: MissedOpportunity[] = [];
+
+  if (getMetricScore(metrics, "evidence") < 65) {
+    missed.push({
+      title: "Turn your best claim into proof",
+      missedArgument: `You kept circling "${focusLine}" without pinning it to a named study, case, or concrete example.`,
+      whyItWasAvailable:
+        "That was already your clearest line in the transcript, so proving it would have strengthened the whole case instead of opening a new branch.",
+      betterVersion:
+        "Add one sentence of proof directly after the claim so the opponent has to attack the evidence rather than just dismiss the point as opinion.",
+    });
+  }
+
+  if (getMetricScore(metrics, "weighing") < 64) {
+    missed.push({
+      title: "Cash out the ballot comparison",
+      missedArgument: `You never clearly explained why your world should beat "${opponentCaseReview.strongestPoint}".`,
+      whyItWasAvailable:
+        "The opponent invited a comparison standard, and the transcript never closed that door with a clean priority argument.",
+      betterVersion:
+        "Use one explicit judge instruction: even if the opponent gets part of their point, your impact is broader, more likely, or harder to reverse, so it should control the ballot.",
+    });
+  }
+
+  if (
+    getMetricScore(metrics, "rebuttal") < 62 ||
+    getMetricScore(metrics, "logic") < 62
+  ) {
+    missed.push({
+      title: "Press the hidden premise",
+      missedArgument:
+        "You let the opponent's middle step stand instead of forcing them to prove the assumption carrying their conclusion.",
+      whyItWasAvailable:
+        "Several exchanges gave you a clean opening to say that the opponent's conclusion only works if an unstated premise is granted first.",
+      betterVersion:
+        "Try a direct challenge sentence: that only follows if the missing premise is true, and the round never gave the judge a reason to grant it.",
+    });
+  }
+
+  if (missed.length === 0) {
+    missed.push({
+      title: "Collapse to one voting issue",
+      missedArgument:
+        "You had enough material to build one dominant ballot path, but the round never fully collapsed around it.",
+      whyItWasAvailable:
+        "Your strongest line was already visible, so the next gain is making it the lens for every later answer instead of letting the round stay scattered.",
+      betterVersion:
+        "Pick the cleanest impact in your case and keep returning to why that one issue should decide the judge's ballot.",
+    });
+  }
+
+  return missed.slice(0, 3);
+}
+
+function buildTranscriptReceipts(
+  session: DebateSession,
+  biggestUserMistake: string,
+  bestNextImprovement: BestNextImprovement,
+  opponentCaseReview: OpponentCaseReview,
+  missedOpportunities: MissedOpportunity[],
+): TranscriptReceipt[] {
+  const userMessages = session.messages.filter((message) => message.speaker === "You");
+  const strongestUserMessage = pickMessageByScore(userMessages, scoreStrongMoment);
+  const weakestUserMessage =
+    pickMessageByScore(userMessages, scoreWeakMoment) ?? strongestUserMessage;
+  const spareUserMessage =
+    userMessages.find(
+      (message) =>
+        message.id !== strongestUserMessage?.id && message.id !== weakestUserMessage?.id,
+    ) ??
+    userMessages[userMessages.length - 1] ??
+    weakestUserMessage ??
+    strongestUserMessage;
+
+  const receipts: TranscriptReceipt[] = [];
+
+  if (strongestUserMessage) {
+    receipts.push({
+      id: "best-user-line",
+      title: "Your best ballot line",
+      speaker: "You",
+      quote: quoteMessage(strongestUserMessage.text, 180),
+      diagnosis:
+        "This was the cleanest route you gave the judge from premise to conclusion.",
+      fix:
+        "Keep this line and extend it with one more layer of proof or comparison so it becomes the center of the round.",
+    });
+  }
+
+  if (weakestUserMessage) {
+    receipts.push({
+      id: "round-slip",
+      title: "Where the round slipped",
+      speaker: "You",
+      quote: quoteMessage(weakestUserMessage.text, 180),
+      diagnosis: biggestUserMistake,
+      fix: bestNextImprovement.drill,
+    });
+  }
+
+  receipts.push({
+    id: "opponent-best-shot",
+    title: "Opponent's sharpest hit",
+    speaker: "AI Opponent",
+    quote: opponentCaseReview.strongestQuote,
+    diagnosis: opponentCaseReview.whyItWorked,
+    fix: opponentCaseReview.bestCounter,
+  });
+
+  if (spareUserMessage) {
+    receipts.push({
+      id: "missed-window",
+      title: "The fix you left on the table",
+      speaker: spareUserMessage.speaker,
+      quote: quoteMessage(spareUserMessage.text, 180),
+      diagnosis:
+        missedOpportunities[0]?.missedArgument ??
+        "A cleaner weighing or proof sentence was available here.",
+      fix:
+        missedOpportunities[0]?.betterVersion ??
+        "Turn this line into a full claim, warrant, and impact before moving on.",
+    });
+  }
+
+  return receipts.slice(0, 4);
 }
 
 export function readSearchParam(value: SearchParamValue) {
@@ -3086,6 +3373,20 @@ export function buildHeuristicAnalysis(session: DebateSession): DebateAnalysis {
   const biggestOpponentMistake = buildBiggestOpponentMistake(session);
   const bestNextImprovement = buildBestNextImprovement(metrics);
   const flipSentence = buildFlipSentence(bestNextImprovement);
+  const opponentCaseReview = buildOpponentCaseReview(session);
+  const missedOpportunities = buildMissedOpportunities(
+    session,
+    metrics,
+    strongestArgument,
+    opponentCaseReview,
+  );
+  const transcriptReceipts = buildTranscriptReceipts(
+    session,
+    biggestUserMistake,
+    bestNextImprovement,
+    opponentCaseReview,
+    missedOpportunities,
+  );
   const replayFocus = buildReplayFocus(bestNextImprovement, userSignals);
   const { result, winner, winnerConfidence } = buildWinnerAssessment(session, metrics, score);
   const verdict = buildVerdict(result, winnerConfidence, score);
@@ -3216,6 +3517,9 @@ export function buildHeuristicAnalysis(session: DebateSession): DebateAnalysis {
     momentum,
     argumentMap,
     bestNextImprovement,
+    transcriptReceipts,
+    missedOpportunities,
+    opponentCaseReview,
     replayFocus,
   };
 }
@@ -3325,6 +3629,76 @@ function coerceBestNextImprovement(
     title: takeString(value.title, fallback.title, 72),
     reason: takeString(value.reason, fallback.reason, 180),
     drill: takeString(value.drill, fallback.drill, 180),
+  };
+}
+
+function coerceTranscriptReceipt(
+  value: unknown,
+  fallback: TranscriptReceipt,
+): TranscriptReceipt {
+  if (!isRecord(value)) {
+    return fallback;
+  }
+
+  return {
+    id: takeString(value.id, fallback.id, 40),
+    title: takeString(value.title, fallback.title, 72),
+    speaker: pickSpeaker(value.speaker, fallback.speaker),
+    quote: takeString(value.quote, fallback.quote, 220),
+    diagnosis: takeString(value.diagnosis, fallback.diagnosis, 220),
+    fix: takeString(value.fix, fallback.fix, 220),
+  };
+}
+
+function coerceMissedOpportunity(
+  value: unknown,
+  fallback: MissedOpportunity,
+): MissedOpportunity {
+  if (!isRecord(value)) {
+    return fallback;
+  }
+
+  return {
+    title: takeString(value.title, fallback.title, 72),
+    missedArgument: takeString(
+      value.missedArgument,
+      fallback.missedArgument,
+      220,
+    ),
+    whyItWasAvailable: takeString(
+      value.whyItWasAvailable,
+      fallback.whyItWasAvailable,
+      220,
+    ),
+    betterVersion: takeString(
+      value.betterVersion,
+      fallback.betterVersion,
+      220,
+    ),
+  };
+}
+
+function coerceOpponentCaseReview(
+  value: unknown,
+  fallback: OpponentCaseReview,
+): OpponentCaseReview {
+  if (!isRecord(value)) {
+    return fallback;
+  }
+
+  return {
+    strongestPoint: takeString(
+      value.strongestPoint,
+      fallback.strongestPoint,
+      160,
+    ),
+    strongestQuote: takeString(
+      value.strongestQuote,
+      fallback.strongestQuote,
+      220,
+    ),
+    whyItWorked: takeString(value.whyItWorked, fallback.whyItWorked, 220),
+    bestCounter: takeString(value.bestCounter, fallback.bestCounter, 220),
   };
 }
 
@@ -3469,6 +3843,28 @@ export function coerceDebateAnalysis(
         .slice(0, fallback.momentum.length)
     : fallback.momentum;
 
+  const transcriptReceipts = Array.isArray(value.transcriptReceipts)
+    ? value.transcriptReceipts
+        .map((receipt, index) =>
+          coerceTranscriptReceipt(
+            receipt,
+            fallback.transcriptReceipts[index] ?? fallback.transcriptReceipts[0],
+          ),
+        )
+        .slice(0, 4)
+    : fallback.transcriptReceipts;
+
+  const missedOpportunities = Array.isArray(value.missedOpportunities)
+    ? value.missedOpportunities
+        .map((item, index) =>
+          coerceMissedOpportunity(
+            item,
+            fallback.missedOpportunities[index] ?? fallback.missedOpportunities[0],
+          ),
+        )
+        .slice(0, 3)
+    : fallback.missedOpportunities;
+
   return {
     score,
     result,
@@ -3503,6 +3899,18 @@ export function coerceDebateAnalysis(
     bestNextImprovement: coerceBestNextImprovement(
       value.bestNextImprovement,
       fallback.bestNextImprovement,
+    ),
+    transcriptReceipts:
+      transcriptReceipts.length > 0
+        ? transcriptReceipts
+        : fallback.transcriptReceipts,
+    missedOpportunities:
+      missedOpportunities.length > 0
+        ? missedOpportunities
+        : fallback.missedOpportunities,
+    opponentCaseReview: coerceOpponentCaseReview(
+      value.opponentCaseReview,
+      fallback.opponentCaseReview,
     ),
     replayFocus: takeString(value.replayFocus, fallback.replayFocus, 220),
   };

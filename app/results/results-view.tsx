@@ -298,6 +298,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   } as CSSProperties;
   const reportSections = [
     { href: "#verdict", label: "Verdict" },
+    { href: "#receipts", label: "Receipts" },
     { href: "#skills", label: "Skills" },
     { href: "#coach", label: "Coaching" },
     { href: "#map", label: "Map" },
@@ -336,7 +337,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
 
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <header className="theme-card report-rise rounded-[2.2rem] border p-6 backdrop-blur md:p-8">
-          <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
             <div className="max-w-3xl">
               <p className="theme-kicker text-sm uppercase tracking-[0.35em]">
                 Debate Report
@@ -365,12 +366,12 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="report-action-stack flex w-full flex-col gap-3 md:w-[18rem] md:flex-none">
               <button
                 type="button"
                 disabled={isRouting}
                 onClick={continueDebate}
-                className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
+                className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
               >
                 Continue debate
               </button>
@@ -378,20 +379,20 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                 type="button"
                 disabled={isRouting}
                 onClick={replayDebateBetter}
-                className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
+                className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
               >
                 Replay the Debate Better
               </button>
               <button
                 type="button"
                 onClick={exportFeedbackPdf}
-                className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition"
+                className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition"
               >
                 Export Feedback PDF
               </button>
               <Link
                 href="/"
-                className="theme-button-primary rounded-full px-5 py-3 text-sm font-semibold transition"
+                className="theme-button-primary inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition"
               >
                 New topic
               </Link>
@@ -410,12 +411,19 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                 {section.label}
               </a>
             ))}
+            <button
+              type="button"
+              onClick={exportFeedbackPdf}
+              className="theme-button-secondary ml-auto inline-flex items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold transition"
+            >
+              Export PDF
+            </button>
           </div>
         </nav>
 
         <section
           id="verdict"
-          className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.12fr_0.88fr]"
+          className="scroll-mt-28 grid gap-6 xl:grid-cols-[1.12fr_0.88fr] xl:items-start"
         >
           <section className="theme-panel report-hero relative overflow-hidden rounded-[2.35rem] border p-6 md:p-8">
             <div className="report-hero-glow absolute inset-x-0 top-0 h-44 opacity-80" />
@@ -584,7 +592,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
 
         <section
           id="snapshot"
-          className="scroll-mt-28 grid gap-4 xl:grid-cols-[1.1fr_0.75fr_0.9fr]"
+          className="scroll-mt-28 grid gap-4 xl:grid-cols-[1.02fr_0.9fr_0.98fr] xl:items-start"
         >
           <section className="theme-card report-rise report-feature-card rounded-[2rem] border p-6 backdrop-blur">
             <p className="theme-muted text-xs uppercase tracking-[0.3em]">
@@ -600,7 +608,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
             </p>
           </section>
 
-          <div className="grid gap-4">
+          <div className="grid gap-4 self-start">
             <section className="theme-card report-rise rounded-[1.8rem] border p-5 backdrop-blur">
               <p className="theme-muted text-xs uppercase tracking-[0.28em]">
                 Your Biggest Mistake
@@ -610,12 +618,26 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
               </p>
             </section>
 
-            <section className="theme-card report-rise rounded-[1.8rem] border p-5 backdrop-blur">
+            <section className="theme-card report-rise report-feature-card rounded-[1.8rem] border p-5 backdrop-blur">
               <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                AI Opponent Mistake
+                Opponent&apos;s Best Shot
               </p>
-              <p className="theme-strong mt-4 text-base leading-7">
-                {report.biggestOpponentMistake}
+              <p className="mt-3 text-xl font-semibold">
+                {report.opponentCaseReview.strongestPoint}
+              </p>
+              <blockquote className="report-quote mt-4 rounded-[1.35rem] border px-4 py-4 text-sm leading-6">
+                {report.opponentCaseReview.strongestQuote}
+              </blockquote>
+              <div className="theme-subcard mt-4 rounded-[1.25rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                  Best counter
+                </p>
+                <p className="theme-strong mt-2 text-sm leading-6">
+                  {report.opponentCaseReview.bestCounter}
+                </p>
+              </div>
+              <p className="theme-copy mt-4 text-sm leading-6">
+                Their own weak spot: {report.biggestOpponentMistake}
               </p>
             </section>
           </div>
@@ -634,6 +656,20 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
               <p className="theme-copy mt-3 text-sm leading-6">{replayFocus}</p>
             </div>
 
+            {report.missedOpportunities[0] ? (
+              <div className="theme-subcard mt-4 rounded-[1.45rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                  Best argument you missed
+                </p>
+                <p className="theme-strong mt-2 text-sm leading-6">
+                  {report.missedOpportunities[0].missedArgument}
+                </p>
+                <p className="theme-copy mt-3 text-sm leading-6">
+                  {report.missedOpportunities[0].betterVersion}
+                </p>
+              </div>
+            ) : null}
+
             <div className="mt-6 grid gap-3">
               <button
                 type="button"
@@ -642,13 +678,6 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                 className="theme-button-primary inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
               >
                 Replay With This Fix
-              </button>
-              <button
-                type="button"
-                onClick={exportFeedbackPdf}
-                className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-semibold transition"
-              >
-                Export This Feedback
               </button>
             </div>
           </section>
