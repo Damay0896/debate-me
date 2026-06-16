@@ -30,23 +30,23 @@ const AUDIENCE_TYPES = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "About | Debate Me",
-  description: "What Debate Me is, who it is for, and what kind of argument training it is built to improve.",
+  title: "About | Counterpoint",
+  description: "What Counterpoint is, who it is for, and why it is designed as a private premium debate room.",
 };
 
 export default function AboutPage() {
   return (
     <SitePageShell
-      kicker="About Debate Me"
-      title="A practice room for people who want sharper arguments, not softer praise."
-      description="Debate Me is built to make your reasoning cleaner under pressure. It is part sparring partner, part coach, and part post-round film review, designed for people who improve by taking reps instead of reading generic advice."
+      kicker="About Counterpoint"
+      title="A private room for people who want sharper arguments, not softer praise."
+      description="Counterpoint is built to make your reasoning cleaner under pressure. It combines hard sparring, premium coaching, and post-round film review for people who improve by taking serious reps."
       highlights={[
-        { label: "Best for", value: "Fast reps with real pushback" },
+        { label: "Best for", value: "Private reps with real resistance" },
         { label: "Training target", value: "Logic, rebuttal, weighing, clarity" },
-        { label: "End goal", value: "More winnable rounds and cleaner thinking" },
+        { label: "End goal", value: "Cleaner wins and stronger judgment" },
       ]}
       ctaHref="/"
-      ctaLabel="Start debating"
+      ctaLabel="Enter Counterpoint"
       secondaryCtaHref="/how-it-works"
       secondaryCtaLabel="See how it works"
     >
@@ -78,8 +78,8 @@ export default function AboutPage() {
           <div className="theme-surface mt-6 rounded-[1.6rem] border p-5">
             <p className="theme-muted text-xs uppercase tracking-[0.22em]">What makes it different</p>
             <p className="theme-copy mt-3 text-sm leading-7">
-              A lot of tools either flatter the user or drown them in theory. Debate Me tries
-              to sit in the useful middle: real friction during the round, then specific coaching
+              A lot of tools either flatter the user or drown them in theory. Counterpoint sits
+              in the useful middle: real friction during the round, then specific coaching
               after the round.
             </p>
           </div>

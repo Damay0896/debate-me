@@ -10,14 +10,15 @@ export default function SiteFooter() {
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
               <p className="theme-kicker text-xs uppercase tracking-[0.32em]">
-                Keep Talking Sharper
+                Private Circle
               </p>
               <h2 className="mt-3 text-3xl font-semibold">
-                Built for people who want better reps, cleaner logic, and faster growth.
+                Built for people who care about sharper reasoning, cleaner rebuttals, and room control.
               </h2>
               <p className="theme-copy mt-4 max-w-2xl text-sm leading-7">
-                Debate Me is part practice room, part pressure chamber, and part coaching desk.
-                The whole point is simple: make the next round more winnable than the last one.
+                Counterpoint is a private debate room, a pressure-tested coaching desk, and a premium
+                archive of your best and worst rounds. The point is simple: make the next room more
+                winnable than the last one.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
@@ -38,7 +39,7 @@ export default function SiteFooter() {
             <div className="grid gap-4">
               <div className="theme-surface rounded-[1.5rem] border p-5">
                 <p className="theme-muted text-xs uppercase tracking-[0.24em]">
-                  Sample praise
+                  Selected praise
                 </p>
                 <p className="theme-strong mt-3 text-sm leading-6">
                   &ldquo;{SAMPLE_TESTIMONIALS[0]?.quote}&rdquo;

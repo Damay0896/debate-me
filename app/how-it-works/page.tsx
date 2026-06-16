@@ -23,8 +23,8 @@ const FLOW_SEGMENTS = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "How It Works | Debate Me",
-  description: "See how a Debate Me round is built, how the live debate works, and what feedback you get afterward.",
+  title: "How It Works | Counterpoint",
+  description: "See how a Counterpoint room is built, how the live clash works, and what premium feedback you get afterward.",
 };
 
 export default function HowItWorksPage() {
@@ -32,14 +32,14 @@ export default function HowItWorksPage() {
     <SitePageShell
       kicker="How It Works"
       title="A clean loop: build the matchup, survive the clash, learn exactly what to fix."
-      description="The app is meant to be quick enough for frequent reps but deep enough that the report still teaches. You should be able to start a round fast, feel real resistance, and finish with a next-step that actually matters."
+      description="Counterpoint is meant to be quick enough for frequent reps but polished enough to feel high-end. You should be able to open a room fast, feel real resistance, and finish with a next-step that actually matters."
       highlights={[
         { label: "Setup time", value: "Usually under a minute" },
-        { label: "Round feel", value: "Live, adversarial, and coachable" },
+        { label: "Round feel", value: "Private, adversarial, and coachable" },
         { label: "Best habit", value: "Replay the same topic with one fix" },
       ]}
       ctaHref="/"
-      ctaLabel="Build a matchup"
+      ctaLabel="Open a room"
       secondaryCtaHref="/testimonials"
       secondaryCtaLabel="Read sample reactions"
     >

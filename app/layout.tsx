@@ -9,8 +9,8 @@ import { THEME_STYLE_BLOCK } from "@/lib/theme-styles";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Debate Me",
-  description: "Practice arguments, rebuttals, and tradeoff framing against an AI opponent.",
+  title: "Counterpoint",
+  description: "Private debate rooms for sharper arguments, elite rebuttals, and premium post-round analysis.",
 };
 
 export default function RootLayout({

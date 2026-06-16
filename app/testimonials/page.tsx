@@ -11,8 +11,8 @@ const FAVORITE_BITS = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Testimonials | Debate Me",
-  description: "Testimonials and the kind of users Debate Me was designed to help.",
+  title: "Testimonials | Counterpoint",
+  description: "Testimonials and the kind of users Counterpoint was designed to serve.",
 };
 
 export default function TestimonialsPage() {
@@ -20,25 +20,25 @@ export default function TestimonialsPage() {
     <SitePageShell
       kicker="Testimonials"
       title="The kind of praise we want to earn from people who actually care about arguing better."
-      description="These testimonials reflect the kinds of users Debate Me was built for and the reasons the product clicks with people who care about arguing well."
+      description="These testimonials reflect the kinds of users Counterpoint was built for and the reasons the product clicks with people who care about arguing well."
       highlights={[
-        { label: "Tone", value: "Sharp, ambitious, slightly obsessed" },
+        { label: "Tone", value: "Discreet, sharp, and ambitious" },
         { label: "Most loved", value: "Specific reports and real pressure" },
         { label: "Built for", value: "People who want better reps fast" },
       ]}
       ctaHref="/"
-      ctaLabel="Start your own round"
+      ctaLabel="Enter your room"
       secondaryCtaHref="/about"
       secondaryCtaLabel="See what the app is for"
     >
       <section className="theme-card rounded-[2rem] border p-6 md:p-8">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Sample Praise</p>
-            <h2 className="mt-3 text-3xl font-semibold">A little social proof energy, honestly labeled</h2>
+            <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Selected Praise</p>
+            <h2 className="mt-3 text-3xl font-semibold">What the right users notice almost immediately</h2>
           </div>
           <span className="theme-pill inline-flex rounded-full border px-4 py-2 text-sm">
-            Representative user praise
+            Selected praise
           </span>
         </div>
 

@@ -63,7 +63,7 @@ const EXPLORE_PAGES = [
   {
     href: "/how-it-works",
     label: "How It Works",
-    description: "A clean walkthrough of the setup, live round, and premium report flow.",
+    description: "A clean walkthrough of the room setup, live clash, and premium report flow.",
   },
   {
     href: "/testimonials",
@@ -197,41 +197,40 @@ export default function Home() {
         <section className="theme-card flex flex-col justify-between rounded-[2rem] border p-8 backdrop-blur md:p-10">
           <div>
             <p className="theme-kicker mb-4 text-sm font-medium uppercase tracking-[0.35em]">
-              Practice Live Rebuttals
+              Private Debate Rooms
             </p>
             <h1 className="max-w-3xl text-5xl font-semibold leading-tight text-balance md:text-7xl">
-              Debate like the room is watching.
+              Enter the room already sharpened.
             </h1>
             <p className="theme-copy mt-6 max-w-2xl text-lg leading-8">
-              Pick a claim, choose a side, and get pressed by an opponent that
-              fights back. When the round ends, you get a quick coaching report
-              instead of a placeholder screen.
+              Choose the motion, choose the side, and step into a private sparring room built
+              for hard pressure, fast rebuttals, and premium post-round analysis.
             </p>
           </div>
 
           <div className="mt-10 grid gap-4 md:grid-cols-3">
             <div className="theme-surface rounded-3xl border p-5">
               <p className="theme-muted text-sm uppercase tracking-[0.2em]">
-                Instant Setup
+                Curated Setup
               </p>
               <p className="mt-3 text-xl font-medium">
-                Start from a topic seed or write your own motion.
+                Open a room from a starter motion or write the exact claim you want to test.
               </p>
             </div>
             <div className="theme-surface rounded-3xl border p-5">
               <p className="theme-muted text-sm uppercase tracking-[0.2em]">
-                Pressure Test
+                High Pressure
               </p>
               <p className="mt-3 text-xl font-medium">
-                The opponent challenges weak evidence, logic, and tradeoffs.
+                The opposition presses weak evidence, loose logic, and lazy tradeoffs immediately.
               </p>
             </div>
             <div className="theme-surface rounded-3xl border p-5">
               <p className="theme-muted text-sm uppercase tracking-[0.2em]">
-                Scorecard
+                Judge&apos;s Brief
               </p>
               <p className="mt-3 text-xl font-medium">
-                Finish the round and get strengths, weaknesses, and next drills.
+                Finish the round and leave with premium notes, exact weaknesses, and the replay line that matters.
               </p>
             </div>
           </div>
@@ -239,7 +238,7 @@ export default function Home() {
 
         <section className="theme-panel rounded-[2rem] border p-8 md:p-10">
           <p className="theme-kicker text-sm font-medium uppercase tracking-[0.35em]">
-            New Round
+            Open A Room
           </p>
           <h2 className="mt-4 text-3xl font-semibold">Build your matchup.</h2>
 
@@ -401,7 +400,7 @@ export default function Home() {
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div className="max-w-2xl">
                 <p className="theme-kicker text-xs uppercase tracking-[0.28em]">
-                  Sparring Coach
+                  Private Coach
                 </p>
                 <h3 className="mt-3 text-2xl font-semibold">
                   Live turn scoring and weak-point detection
@@ -419,7 +418,7 @@ export default function Home() {
                   liveFeedbackMode ? "theme-option-active" : "theme-button-secondary"
                 }`}
               >
-                {liveFeedbackMode ? "Sparring Coach on" : "Turn on Sparring Coach"}
+                {liveFeedbackMode ? "Private Coach on" : "Turn on Private Coach"}
               </button>
             </div>
 
@@ -510,7 +509,7 @@ export default function Home() {
             onClick={launchDebate}
             className="theme-button-primary mt-10 inline-flex w-full items-center justify-center rounded-full px-6 py-4 text-lg font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isPending ? "Preparing the round..." : "Start debate"}
+            {isPending ? "Preparing the room..." : "Enter the room"}
           </button>
 
           <p className="theme-muted mt-4 text-sm">
@@ -525,7 +524,7 @@ export default function Home() {
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <p className="theme-kicker text-xs uppercase tracking-[0.32em]">
-                  Round history
+                  Private archive
                 </p>
                 <h2 className="mt-3 text-3xl font-semibold">Jump back into your best work</h2>
               </div>
@@ -572,7 +571,7 @@ export default function Home() {
                           ) : null}
                           {round.liveFeedbackMode ? (
                             <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.16em]">
-                              Sparring Coach
+                              Private Coach
                             </span>
                           ) : null}
                         </div>
@@ -596,7 +595,7 @@ export default function Home() {
 
                     <div className="theme-subcard mt-5 rounded-[1.3rem] border p-4">
                       <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                        Stored coach read
+                        Saved room brief
                       </p>
                       <p className="theme-copy mt-2 text-sm leading-6">
                         {round.analysisSummary ??
@@ -609,13 +608,13 @@ export default function Home() {
                         href={`/debate?session=${round.sessionId}`}
                         className="theme-button-secondary inline-flex rounded-full border px-4 py-2 text-sm font-medium transition"
                       >
-                        Resume round
+                        Re-enter room
                       </Link>
                       <Link
                         href={`/results?session=${round.sessionId}`}
                         className="theme-button-primary inline-flex rounded-full px-4 py-2 text-sm font-semibold transition"
                       >
-                        Open report
+                        Open brief
                       </Link>
                     </div>
                   </article>
@@ -629,7 +628,7 @@ export default function Home() {
       <section className="mx-auto mt-8 max-w-6xl">
         <div className="grid gap-8 lg:grid-cols-[1.04fr_0.96fr]">
           <div className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
-            <p className="theme-kicker text-xs uppercase tracking-[0.32em]">Explore Debate Me</p>
+            <p className="theme-kicker text-xs uppercase tracking-[0.32em]">Explore Counterpoint</p>
             <h2 className="mt-3 text-3xl font-semibold">
               More than a single landing page now.
             </h2>
@@ -655,7 +654,7 @@ export default function Home() {
           <div className="grid gap-4">
             <div className="theme-panel rounded-[2rem] border p-6 md:p-8">
               <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Why It Exists</p>
-              <h2 className="mt-3 text-3xl font-semibold">Built for sharper reps, not empty encouragement.</h2>
+              <h2 className="mt-3 text-3xl font-semibold">Built for sharper rooms, not generic encouragement.</h2>
               <div className="mt-6 space-y-3">
                 {ORIGIN_NOTES.slice(0, 2).map((item) => (
                   <div key={item.title} className="theme-subcard rounded-[1.35rem] border p-4">
@@ -667,7 +666,7 @@ export default function Home() {
             </div>
 
             <div className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
-              <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Sample Praise</p>
+              <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Selected Praise</p>
               <p className="mt-3 text-lg leading-8">
                 &ldquo;{SAMPLE_TESTIMONIALS[0].quote}&rdquo;
               </p>

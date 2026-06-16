@@ -7,7 +7,7 @@ import { ORIGIN_NOTES } from "@/lib/site-content";
 const FRUSTRATIONS = [
   "Practice tools that reward confidence even when the warrant is mush.",
   "Feedback that says almost nothing beyond good job or be more clear.",
-  "AI opponents that feel like agreeable assistants instead of real clash.",
+  "Practice partners that nod along instead of forcing real clash.",
 ] as const;
 
 const DESIGN_BETS = [
@@ -17,8 +17,8 @@ const DESIGN_BETS = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Why We Built This | Debate Me",
-  description: "The product philosophy behind Debate Me and the frustrations it was designed to fix.",
+  title: "Why We Built This | Counterpoint",
+  description: "The product philosophy behind Counterpoint and the frustrations it was designed to fix.",
 };
 
 export default function WhyWeBuiltThisPage() {
@@ -26,14 +26,14 @@ export default function WhyWeBuiltThisPage() {
     <SitePageShell
       kicker="Why We Built This"
       title="Because too many argument tools are either lifeless, flattering, or both."
-      description="We wanted something that actually pressures your reasoning and then tells you, in plain English, what swung the round. The goal was never just AI chat. The goal was a practice loop that makes your next attempt measurably stronger."
+      description="We wanted something that actually pressures your reasoning and then tells you, in plain English, what swung the round. The goal was never another generic tool. The goal was a private practice loop that makes your next attempt measurably stronger."
       highlights={[
         { label: "Built against", value: "Polite but useless feedback" },
-        { label: "Built for", value: "Reps that feel alive" },
+        { label: "Built for", value: "Rooms that feel serious" },
         { label: "North star", value: "Clear fixes after real clash" },
       ]}
       ctaHref="/"
-      ctaLabel="Try a round"
+      ctaLabel="Enter Counterpoint"
       secondaryCtaHref="/about"
       secondaryCtaLabel="Read about the app"
     >
@@ -74,7 +74,7 @@ export default function WhyWeBuiltThisPage() {
             href="/testimonials"
             className="theme-button-secondary inline-flex rounded-full border px-5 py-3 text-sm font-medium transition"
           >
-            See the sample praise
+            See selected praise
           </Link>
         </div>
 

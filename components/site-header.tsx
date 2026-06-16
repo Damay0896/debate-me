@@ -22,14 +22,14 @@ export default function SiteHeader() {
             className="theme-card inline-flex items-center gap-3 rounded-full border px-4 py-3 backdrop-blur-xl transition"
           >
             <span className="theme-accent-chip flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold">
-              DM
+              CP
             </span>
             <span className="flex flex-col leading-none">
               <span className="theme-muted text-[11px] uppercase tracking-[0.28em]">
-                Debate Me
+                Counterpoint
               </span>
               <span className="mt-1 text-sm font-semibold">
-                Train your argument live
+                Private debate rooms
               </span>
             </span>
           </Link>
@@ -62,7 +62,7 @@ export default function SiteHeader() {
             href="/"
             className="theme-button-primary inline-flex rounded-full px-5 py-3 text-sm font-semibold transition"
           >
-            Start a round
+            Enter the room
           </Link>
           <ThemeToggle />
         </div>

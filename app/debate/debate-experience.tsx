@@ -1170,7 +1170,7 @@ export default function DebateExperience({
                   </label>
                   <p className="theme-muted text-sm">
                     {session.liveFeedbackMode
-                      ? "Sparring Coach is scoring this turn live."
+                      ? "Private Coach is scoring this turn live."
                       : `Momentum read: ${liveCoach.momentumRead}`}
                   </p>
                 </div>
@@ -1246,7 +1246,7 @@ export default function DebateExperience({
             {session.liveFeedbackMode ? (
               <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
                 <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                  Sparring Coach
+                  Private Coach
                 </p>
                 <h2 className="mt-3 text-2xl font-semibold">
                   {input.trim() ? "Current draft score" : "Last turn score"}
@@ -1345,7 +1345,7 @@ export default function DebateExperience({
                 ) : (
                   <div className="theme-surface mt-5 rounded-[1.45rem] border p-4">
                     <p className="theme-copy text-sm leading-6">
-                      Start typing and Sparring Coach will score the turn, flag the weakest seam,
+                      Start typing and Private Coach will score the turn, flag the weakest seam,
                       and tell you the fastest upgrade before you send it.
                     </p>
                   </div>

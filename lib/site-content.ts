@@ -7,10 +7,10 @@ export const SITE_NAV_LINKS = [
 ] as const;
 
 export const SITE_FOOTER_LINKS = [
-  { href: "/about", label: "About Debate Me" },
+  { href: "/about", label: "About Counterpoint" },
   { href: "/why-we-built-this", label: "Why we created this" },
   { href: "/how-it-works", label: "How it works" },
-  { href: "/testimonials", label: "Pilot testimonials" },
+  { href: "/testimonials", label: "Selected testimonials" },
 ] as const;
 
 export const SAMPLE_TESTIMONIALS = [
@@ -18,7 +18,7 @@ export const SAMPLE_TESTIMONIALS = [
     name: "Maya R.",
     role: "High school debate captain",
     quote:
-      "Debate Me feels like the first practice tool that actually punishes lazy warrants instead of praising me for sounding confident.",
+      "Counterpoint feels like the first practice tool that actually punishes lazy warrants instead of praising me for sounding confident.",
   },
   {
     name: "Eli T.",
@@ -36,7 +36,7 @@ export const SAMPLE_TESTIMONIALS = [
     name: "Nina C.",
     role: "Mock trial student",
     quote:
-      "Switching personalities makes it feel like you are preparing for different judges, opponents, and energy levels instead of one generic chatbot.",
+      "Switching personalities makes it feel like you are preparing for different judges, opponents, and energy levels instead of one generic practice tool.",
   },
   {
     name: "Sam D.",

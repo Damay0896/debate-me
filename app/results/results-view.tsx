@@ -291,7 +291,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   const reportLabel = isLoading
     ? "Refreshing with deeper coaching"
     : analysisSource === "openrouter"
-      ? "AI coach + instant scoring"
+      ? "Private coach + instant scoring"
       : storedAnalysisRecord
         ? "Saved coaching report"
         : "Instant scoring report";
@@ -300,7 +300,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     report.winner === "You"
       ? "User"
       : report.winner === "AI Opponent"
-        ? "AI Opponent"
+        ? "Opponent"
         : "Tie";
   const resultBanner =
     report.result === "win" ? "WIN" : report.result === "loss" ? "LOSS" : "TIE";
@@ -438,7 +438,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
       `Verdict: ${report.verdict}`,
       `Winner confidence: ${report.winnerConfidence}%`,
       `Best next improvement: ${report.bestNextImprovement.title}`,
-      `Live coach mode: ${activeSession.liveFeedbackMode ? "Sparring Coach" : "Standard"}`,
+      `Live coach mode: ${activeSession.liveFeedbackMode ? "Private Coach" : "Standard"}`,
       `Replay focus: ${replayFocus}`,
       "",
       "Rematch script:",

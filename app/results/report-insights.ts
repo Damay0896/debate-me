@@ -374,7 +374,7 @@ function buildJudgePerspective(
       nextMove,
       note,
       tone: "warning" as const,
-      verdict: "Likely votes AI opponent",
+      verdict: "Likely votes opponent",
     } satisfies JudgePerspective;
   }
 
@@ -649,7 +649,7 @@ export function buildReportInsights(
     {
       label: "Judge ballot",
       tone: analysis.result === "win" ? "accent" : analysis.result === "loss" ? "warning" : "neutral",
-      value: `Judge votes ${analysis.winner === "You" ? "for you" : analysis.winner === "AI Opponent" ? "for the AI opponent" : "this round a tie"} because ${analysis.winnerReasoning}`,
+      value: `Judge votes ${analysis.winner === "You" ? "for you" : analysis.winner === "AI Opponent" ? "for the opponent" : "this round a tie"} because ${analysis.winnerReasoning}`,
     },
     {
       label: "Deciding issue",

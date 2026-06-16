@@ -58,6 +58,10 @@ function getDisplayWinnerLabel(winner: string) {
     return "User";
   }
 
+  if (winner === "AI Opponent") {
+    return "Opponent";
+  }
+
   return winner;
 }
 
@@ -201,7 +205,7 @@ export default function ResultsExportView({
       return;
     }
 
-    document.title = `${session.topic} - Debate Me Feedback Export`;
+    document.title = `${session.topic} - Counterpoint Brief Export`;
   }, [session]);
 
   if (!isClient) {
@@ -270,7 +274,7 @@ export default function ResultsExportView({
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
             <div className="max-w-3xl">
               <p className="text-xs font-semibold uppercase tracking-[0.32em] text-amber-700">
-                Debate Me Feedback Export
+                Counterpoint Brief Export
               </p>
               <h1 className="mt-3 text-3xl font-semibold leading-tight text-slate-950 md:text-4xl">
                 {session.topic}
@@ -1005,7 +1009,7 @@ export default function ResultsExportView({
         </section>
 
         <footer className="mt-8 border-t border-slate-200 pt-5 text-xs leading-6 text-slate-500">
-          Export generated from Debate Me feedback. Use your browser&apos;s &quot;Save as PDF&quot;
+          Export generated from Counterpoint feedback. Use your browser&apos;s &quot;Save as PDF&quot;
           option after pressing Print.
         </footer>
       </article>
