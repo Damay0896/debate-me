@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import {
   appendMessage,
@@ -13,12 +13,25 @@ import {
   getOpponentPersonalityMeta,
   getOpponentThinkingCopy,
   getReplyStyleMeta,
+  sessionToTranscript,
   type DebateSession,
   type OpponentPersonality,
   type ReplyStyle,
   type SideChoice,
 } from "@/lib/debate";
 import { loadSession, saveSession } from "@/lib/debate-storage";
+import { EvidenceDeck } from "@/components/evidence-deck";
+import {
+  buildFactCheckClaims,
+  buildHeuristicEvidence,
+  coerceEvidenceResult,
+  factCheckStatusMeta,
+  splitFactCheckSentences,
+  type EvidenceCard,
+  type EvidenceRequest,
+  type EvidenceResult,
+  type FactCheckClaim,
+} from "@/lib/research";
 
 const evidencePattern =
   /\b(data|study|research|evidence|statistic|according to|for example|for instance|report)\b/i;
@@ -36,6 +49,60 @@ const absolutePattern =
   /\b(always|never|everyone|nobody|all|none|obviously|clearly)\b/i;
 const contestedTermPattern =
   /\b(harm|good|better|fair|freedom|rights|justice|safe|dangerous|benefit|strong)\b/i;
+const examplePattern =
+  /\b(for example|for instance|look at|consider|case of|history shows)\b/i;
+const qualifierPattern =
+  /\b(often|usually|likely|tends to|can|may|in many cases|sometimes)\b/i;
+const directReferencePattern =
+  /\b(you said|you claim|your claim|your case|your point|their claim|their case|their point|that point|that claim|that argument|the opponent)\b/i;
+const coachStopWords = new Set([
+  "about",
+  "after",
+  "again",
+  "against",
+  "almost",
+  "also",
+  "although",
+  "among",
+  "because",
+  "before",
+  "being",
+  "between",
+  "could",
+  "every",
+  "going",
+  "having",
+  "might",
+  "other",
+  "point",
+  "claim",
+  "argument",
+  "really",
+  "said",
+  "says",
+  "should",
+  "since",
+  "still",
+  "than",
+  "that",
+  "their",
+  "there",
+  "these",
+  "they",
+  "this",
+  "those",
+  "turn",
+  "under",
+  "until",
+  "what",
+  "when",
+  "where",
+  "which",
+  "while",
+  "with",
+  "would",
+  "your",
+]);
 
 type DebateExperienceProps = {
   initialSessionId: string;
@@ -60,22 +127,226 @@ type DraftCheck = {
   ready: boolean;
 };
 
+type ScoreBreakdownItem = {
+  label: string;
+  note: string;
+  score: number;
+  tone: "accent" | "neutral" | "warning";
+};
+
 type TurnFeedback = {
+  breakdown: ScoreBreakdownItem[];
   critique: string;
   nextFix: string;
+  opponentQuote: string | null;
   score: number;
   strongestPart: string;
+  userQuote: string;
 };
 
 type AttackWindow = {
   label: string;
   punch: string;
   reason: string;
+  targetQuote: string;
   title: string;
 };
 
+type EvidenceState = {
+  error: string | null;
+  result: EvidenceResult | null;
+  status: "idle" | "loading" | "ready" | "error";
+};
+
+type EvidenceResponse = {
+  result?: EvidenceResult;
+  source?: "heuristic" | "openrouter";
+};
+
+function FactCheckBadge({ claim }: { claim: FactCheckClaim }) {
+  const statusMeta = factCheckStatusMeta[claim.status];
+
+  return (
+    <span className="group relative inline-flex align-middle">
+      <button
+        type="button"
+        aria-label={`${statusMeta.label}: ${claim.claim}`}
+        className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1 text-[0.68rem] leading-none shadow-sm transition ${statusMeta.chipClass}`}
+      >
+        {statusMeta.emoji}
+      </button>
+      <span className="theme-card pointer-events-none absolute left-0 top-[calc(100%+0.55rem)] z-30 hidden w-[18rem] rounded-[1rem] border p-3 text-left shadow-2xl group-hover:block group-focus-within:block">
+        <span className="theme-muted text-[0.62rem] uppercase tracking-[0.18em]">
+          Claim detected
+        </span>
+        <span className="theme-copy mt-2 block text-xs leading-5">{claim.claim}</span>
+        <span className="theme-muted mt-3 block text-[0.62rem] uppercase tracking-[0.18em]">
+          Status
+        </span>
+        <span className="theme-strong mt-2 block text-xs leading-5">
+          {statusMeta.emoji} {statusMeta.label}
+        </span>
+        <span className="theme-copy mt-3 block text-xs leading-5">
+          {claim.explanation}
+        </span>
+        {claim.sourceLabel ? (
+          <span className="theme-muted mt-3 block text-[0.68rem] leading-5">
+            Source: {claim.sourceLabel}
+          </span>
+        ) : null}
+      </span>
+    </span>
+  );
+}
+
+function FactCheckedMessageText({
+  claims,
+  text,
+}: {
+  claims: FactCheckClaim[];
+  text: string;
+}) {
+  if (claims.length === 0) {
+    return <p className="theme-strong mt-3 whitespace-pre-wrap text-base leading-7">{text}</p>;
+  }
+
+  const claimBySentence = new Map(claims.map((claim) => [claim.sentenceIndex, claim]));
+  const sentences = splitFactCheckSentences(text);
+
+  if (sentences.length === 0) {
+    return <p className="theme-strong mt-3 whitespace-pre-wrap text-base leading-7">{text}</p>;
+  }
+
+  return (
+    <div className="theme-strong mt-3 whitespace-pre-wrap text-base leading-7">
+      {sentences.map((sentence, index) => {
+        const claim = claimBySentence.get(index);
+
+        return (
+          <span key={`${index}-${sentence}`} className="mr-1.5 inline">
+            {sentence}
+            {claim ? (
+              <span className="ml-1 inline-flex align-middle">
+                <FactCheckBadge claim={claim} />
+              </span>
+            ) : null}{" "}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 function countWords(value: string) {
   return value.split(/\s+/).filter(Boolean).length;
+}
+
+function splitSentences(value: string) {
+  return value
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function clampText(value: string, maxLength: number) {
+  const trimmed = value.replace(/\s+/g, " ").trim();
+
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, maxLength - 1).trimEnd()}...`;
+}
+
+function clampRange(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, Math.round(value)));
+}
+
+function getScoreTone(score: number) {
+  if (score >= 78) {
+    return "accent" as const;
+  }
+
+  if (score >= 60) {
+    return "neutral" as const;
+  }
+
+  return "warning" as const;
+}
+
+function extractKeywords(value: string) {
+  return [...new Set(
+    value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s']/g, " ")
+      .split(/\s+/)
+      .map((token) => token.replace(/^'+|'+$/g, ""))
+      .filter((token) => token.length >= 4 && !coachStopWords.has(token)),
+  )];
+}
+
+function findSharedKeywords(left: string, right: string) {
+  const rightKeywords = new Set(extractKeywords(right));
+
+  return extractKeywords(left)
+    .filter((keyword) => rightKeywords.has(keyword))
+    .slice(0, 3);
+}
+
+function pickQuote(value: string, maxLength = 112) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+
+  if (!normalized) {
+    return "";
+  }
+
+  const sentences = splitSentences(normalized);
+  const preferredSentence =
+    sentences.find((sentence) => countWords(sentence) >= 6) ??
+    sentences[0] ??
+    normalized;
+
+  return clampText(preferredSentence, maxLength);
+}
+
+function scoreSentenceWeakness(sentence: string) {
+  let score = 0;
+
+  if (!evidencePattern.test(sentence)) {
+    score += 4;
+  }
+
+  if (!warrantPattern.test(sentence)) {
+    score += 4;
+  }
+
+  if (!weighingPattern.test(sentence)) {
+    score += 2;
+  }
+
+  if (absolutePattern.test(sentence)) {
+    score += 5;
+  }
+
+  if (contestedTermPattern.test(sentence) && !definitionPattern.test(sentence)) {
+    score += 3;
+  }
+
+  score += Math.max(0, 10 - Math.min(countWords(sentence), 10));
+
+  return score;
+}
+
+function pickWeakestSentence(value: string) {
+  const sentences = splitSentences(value);
+
+  if (sentences.length === 0) {
+    return value;
+  }
+
+  return sentences.reduce((weakest, sentence) =>
+    scoreSentenceWeakness(sentence) > scoreSentenceWeakness(weakest) ? sentence : weakest,
+  );
 }
 
 function getTone(count: number, strongThreshold: number, midThreshold: number) {
@@ -91,7 +362,7 @@ function getTone(count: number, strongThreshold: number, midThreshold: number) {
 }
 
 function clampScore(score: number) {
-  return Math.max(18, Math.min(96, Math.round(score)));
+  return clampRange(score, 24, 95);
 }
 
 function getInitialSession(
@@ -115,81 +386,250 @@ function getInitialSession(
   );
 }
 
-function buildTurnFeedback(text: string): TurnFeedback | null {
+function getLatestUserTurnContext(session: DebateSession) {
+  for (let index = session.messages.length - 1; index >= 0; index -= 1) {
+    const message = session.messages[index];
+
+    if (message.speaker !== "You") {
+      continue;
+    }
+
+    const previousOpponent =
+      [...session.messages.slice(0, index)]
+        .reverse()
+        .find((candidate) => candidate.speaker === "AI Opponent")?.text ?? "";
+
+    return {
+      opponentText: previousOpponent,
+      userText: message.text,
+    };
+  }
+
+  return {
+    opponentText: "",
+    userText: "",
+  };
+}
+
+function buildTurnFeedback(text: string, opponentText: string): TurnFeedback | null {
   const trimmed = text.trim();
 
   if (!trimmed) {
     return null;
   }
 
+  const trimmedOpponent = opponentText.trim();
   const wordCount = countWords(trimmed);
   const hasEvidence = evidencePattern.test(trimmed);
+  const hasExample = examplePattern.test(trimmed);
   const hasWarrant = warrantPattern.test(trimmed);
   const hasImpact = impactPattern.test(trimmed);
   const hasRebuttal = rebuttalPattern.test(trimmed);
   const hasWeighing = weighingPattern.test(trimmed);
   const hasDefinition = definitionPattern.test(trimmed);
   const hasAbsolute = absolutePattern.test(trimmed);
+  const hasQualifier = qualifierPattern.test(trimmed);
+  const mentionsOpponent = directReferencePattern.test(trimmed);
+  const sharedKeywords =
+    trimmedOpponent !== "" ? findSharedKeywords(trimmed, trimmedOpponent) : [];
+  const answersOpponent =
+    trimmedOpponent !== ""
+      ? hasRebuttal || mentionsOpponent || sharedKeywords.length >= 2
+      : hasRebuttal;
+  const userQuote = pickQuote(trimmed);
+  const opponentQuote =
+    trimmedOpponent !== "" ? pickQuote(pickWeakestSentence(trimmedOpponent), 104) : null;
+  const lengthAdjustment =
+    wordCount >= 18 && wordCount <= 72
+      ? 18
+      : wordCount >= 12 && wordCount <= 96
+        ? 10
+        : wordCount >= 8
+          ? 2
+          : -12;
+  const proofScore = clampRange(
+    38 + (hasEvidence ? 26 : -8) + (hasExample ? 8 : 0) + (hasWarrant ? 12 : -4),
+    18,
+    95,
+  );
+  const clashScore = clampRange(
+    (trimmedOpponent !== "" ? 34 : 48) +
+      (hasRebuttal ? 18 : trimmedOpponent !== "" ? -6 : 0) +
+      Math.min(sharedKeywords.length, 3) * 7 +
+      (mentionsOpponent ? 6 : 0) +
+      (answersOpponent ? 8 : 0),
+    18,
+    95,
+  );
+  const impactScore = clampRange(
+    34 +
+      (hasImpact ? 24 : -6) +
+      (hasWeighing ? 18 : trimmedOpponent !== "" ? -4 : 0) +
+      (answersOpponent ? 4 : 0),
+    18,
+    95,
+  );
+  const structureScore = clampRange(
+    48 +
+      lengthAdjustment +
+      (hasWarrant ? 6 : 0) +
+      (hasDefinition ? 4 : 0) -
+      (wordCount > 120 ? 10 : 0),
+    18,
+    95,
+  );
+  const disciplineScore = clampRange(
+    78 -
+      (hasAbsolute ? 18 : 0) -
+      (wordCount > 140 ? 10 : 0) +
+      (hasQualifier ? 4 : 0) -
+      (!hasEvidence && wordCount > 55 ? 6 : 0),
+    18,
+    95,
+  );
+  const breakdown: ScoreBreakdownItem[] = [
+    {
+      label: "Proof",
+      note: hasEvidence
+        ? "You gave the judge something more concrete than a bare claim."
+        : "This still needs proof attached to the claim.",
+      score: proofScore,
+      tone: getScoreTone(proofScore),
+    },
+    {
+      label: "Direct reply",
+      note:
+        trimmedOpponent !== ""
+          ? answersOpponent
+            ? "You are actually touching the opponent's point instead of free-floating."
+            : "The turn is drifting away from the exact point you need to beat."
+          : "No opponent turn to answer yet, so this reads as setup offense.",
+      score: clashScore,
+      tone: getScoreTone(clashScore),
+    },
+    {
+      label: "Impact",
+      note: hasImpact
+        ? "The turn starts cashing the argument out into consequences."
+        : "The judge still needs to hear why winning this point matters.",
+      score: impactScore,
+      tone: getScoreTone(impactScore),
+    },
+    {
+      label: "Structure",
+      note:
+        structureScore >= 72
+          ? "There is enough shape here to follow it in a live round."
+          : "The sentence flow still needs a cleaner claim-to-warrant path.",
+      score: structureScore,
+      tone: getScoreTone(structureScore),
+    },
+    {
+      label: "Discipline",
+      note:
+        disciplineScore >= 72
+          ? "The wording avoids most easy self-own openings."
+          : "Loose wording is creating avoidable attack lanes.",
+      score: disciplineScore,
+      tone: getScoreTone(disciplineScore),
+    },
+  ];
+  const weightedScore =
+    proofScore * 0.26 +
+    clashScore * 0.24 +
+    impactScore * 0.2 +
+    structureScore * 0.18 +
+    disciplineScore * 0.12;
+  const score = clampScore(weightedScore);
+  const overlapLabel =
+    sharedKeywords.length > 0 ? sharedKeywords.join(", ") : "their main point";
 
-  let score = 26;
-  score += Math.min(wordCount, 28) * 0.9;
-  score += hasEvidence ? 15 : -6;
-  score += hasWarrant ? 14 : -8;
-  score += hasImpact ? 13 : -6;
-  score += hasRebuttal ? 10 : 0;
-  score += hasWeighing ? 8 : 0;
-  score += hasDefinition ? 5 : 0;
-  score += hasAbsolute ? -9 : 0;
-  score += wordCount >= 22 ? 6 : -4;
-  score += wordCount > 95 ? -4 : 0;
-
-  const strongestPart = hasEvidence
-    ? "Best part: you are at least trying to ground the turn in proof."
-    : hasWarrant
-      ? "Best part: the turn has a visible mechanism instead of only a slogan."
-      : hasImpact
-        ? "Best part: you are at least pointing the judge toward consequences."
-        : hasRebuttal
-          ? "Best part: you are engaging the opponent instead of free-floating."
-          : "Best part: there is a clear claim to build from.";
+  const strongestPart =
+    proofScore >= clashScore &&
+    proofScore >= impactScore &&
+    proofScore >= structureScore &&
+    proofScore >= disciplineScore
+      ? `Best part: "${userQuote}" at least gives the judge something more concrete than pure insistence.`
+      : clashScore >= impactScore &&
+          clashScore >= structureScore &&
+          clashScore >= disciplineScore
+        ? opponentQuote
+          ? `Best part: "${userQuote}" is pointed at "${opponentQuote}" instead of wandering away from the clash.`
+          : `Best part: "${userQuote}" is actually doing argumentative work instead of just filling space.`
+        : impactScore >= structureScore && impactScore >= disciplineScore
+          ? `Best part: "${userQuote}" starts turning the claim into a consequence the judge can weigh.`
+          : structureScore >= disciplineScore
+            ? `Best part: "${userQuote}" is organized enough that a judge can track it live.`
+            : `Best part: "${userQuote}" avoids some of the easy overclaim traps that get punished fast.`;
 
   let critique = "The turn is usable, but it still needs one sharper layer before it really bites.";
   let nextFix = "Add one direct comparison line so the judge knows why your world matters more.";
 
-  if (!hasEvidence) {
-    critique = "This sounds more asserted than proven right now.";
-    nextFix = "Add one study, statistic, or real example before you send it.";
+  if (trimmedOpponent !== "" && !answersOpponent) {
+    critique = opponentQuote
+      ? `Your draft says "${userQuote}", but it barely engages the opponent's line "${opponentQuote}". Right now it reads like a parallel speech instead of a rebuttal.`
+      : `Your draft says "${userQuote}", but it is still not clearly hitting the opponent's actual point.`;
+    nextFix = opponentQuote
+      ? `Open by naming "${opponentQuote}" and tell the judge exactly why that premise fails or matters less.`
+      : "Start with one sentence that names the opponent's premise before extending your own case.";
+  } else if (!hasEvidence) {
+    critique =
+      trimmedOpponent !== "" && opponentQuote
+        ? `You are answering "${opponentQuote}", but "${userQuote}" still asks the judge to trust you without proof.`
+        : `The line "${userQuote}" is clear, but it still sounds asserted rather than proven.`;
+    nextFix =
+      sharedKeywords.length > 0
+        ? `Attach one study, example, or concrete case directly tied to ${overlapLabel}.`
+        : "Add one study, statistic, or real example before you send it.";
   } else if (!hasWarrant) {
-    critique = "The claim has proof language, but the bridge to your conclusion is still thin.";
-    nextFix = "Add one because-sentence that explains how the evidence gets you to the claim.";
+    critique =
+      trimmedOpponent !== "" && opponentQuote
+        ? `You pushed back on "${opponentQuote}", but "${userQuote}" never fully explains why your proof gets you to the ballot.`
+        : `The line "${userQuote}" has proof language, but the bridge to the conclusion is still thin.`;
+    nextFix = "Add one because-sentence that explicitly connects the evidence to your conclusion.";
   } else if (!hasImpact) {
-    critique = "The logic is forming, but the judge still needs to hear why it matters.";
+    critique =
+      trimmedOpponent !== "" && opponentQuote
+        ? `You answer "${opponentQuote}", but the judge still does not hear why winning that point changes the round.`
+        : `The logic is there, but "${userQuote}" still needs a clearer why-it-matters ending.`;
     nextFix = "Finish with the consequence: what harm, cost, or benefit follows if you are right?";
-  } else if (!hasRebuttal) {
-    critique = "This builds your offense, but it does not yet pin the other side down.";
-    nextFix = "Name the opponent's assumption in one sentence before extending your point.";
+  } else if (trimmedOpponent !== "" && !hasWeighing) {
+    critique = opponentQuote
+      ? `This responds to "${opponentQuote}", but it still stops short of saying why your impact matters more than theirs.`
+      : "The response has offense, but the judge still needs a direct why-your-world-wins comparison.";
+    nextFix = "Add one weighing sentence that says why your impact is larger, earlier, or harder to reverse.";
   } else if (hasAbsolute) {
-    critique = "The sentence is punchy, but the universal wording makes it easier to crack.";
-    nextFix = "Trade the absolute language for something tighter unless you can defend every exception.";
-  } else if (score >= 82) {
-    critique = "This is a strong live turn: it has structure, consequence, and real pressure.";
-    nextFix = "Your highest-value upgrade now is to make the comparison explicit instead of implied.";
+    critique = `The hit in "${userQuote}" is punchy, but the absolute wording makes it easier to crack with one counterexample.`;
+    nextFix = "Trade the universal wording for a tighter claim unless you can defend every exception.";
+  } else if (score >= 84) {
+    critique =
+      trimmedOpponent !== "" && opponentQuote
+        ? `This is a strong live turn: it clearly targets "${opponentQuote}", gives a mechanism, and points toward a consequence.`
+        : "This is a strong live turn: it has structure, consequence, and real pressure.";
+    nextFix = "Your highest-value upgrade now is one explicit weighing sentence instead of leaving the comparison implied.";
   } else if (score >= 70) {
-    critique = "This is solid and debate-ready with one more precise layer.";
-    nextFix = "Tighten the cleanest sentence and make sure the impact comparison is explicit.";
+    critique =
+      trimmedOpponent !== "" && opponentQuote
+        ? `This is live: you are contesting "${opponentQuote}" with a real response, but one cleaner comparison would make it judge-ready.`
+        : `This is solid: "${userQuote}" has a usable shape, but one more precise layer would make it sharper.`;
+    nextFix = "Tighten the cleanest sentence and make the impact comparison unmistakable.";
   }
 
   return {
+    breakdown,
     critique,
     nextFix,
-    score: clampScore(score),
+    opponentQuote,
+    score,
     strongestPart,
+    userQuote,
   };
 }
 
 function buildAttackWindow(
   session: DebateSession,
   latestOpponentMessage: string,
+  latestUserMessage: string,
 ): AttackWindow | null {
   const trimmed = latestOpponentMessage.trim();
 
@@ -206,55 +646,71 @@ function buildAttackWindow(
     return null;
   }
 
-  if (!evidencePattern.test(trimmed)) {
+  const targetSentence = pickWeakestSentence(trimmed);
+  const targetQuote = pickQuote(targetSentence, 110);
+  const shortTarget = clampText(targetQuote, 76);
+  const bridgeTerms =
+    latestUserMessage.trim() !== "" ? findSharedKeywords(latestUserMessage, targetSentence) : [];
+  const followThrough =
+    bridgeTerms.length > 0
+      ? `Then tie it back to your ${bridgeTerms.join(", ")} point.`
+      : "Then collapse back to why your standard matters more.";
+
+  if (!evidencePattern.test(targetSentence)) {
     return {
       label: "Missing evidence",
-      punch: "What actual evidence proves that point instead of just repeating it more confidently?",
-      reason: "They made the claim sound settled without giving the judge anything concrete to hold on to.",
+      punch: `On "${shortTarget}," what evidence actually proves that, instead of just asserting it? ${followThrough}`,
+      reason: `Their line "${targetQuote}" sounds settled, but it never gives the judge anything concrete to hold on to.`,
+      targetQuote,
       title: "Ask for proof",
     };
   }
 
-  if (!warrantPattern.test(trimmed)) {
+  if (!warrantPattern.test(targetSentence)) {
     return {
       label: "Missing warrant",
-      punch: "Even if I grant that premise, how does it actually get you to your conclusion?",
-      reason: "They named a premise, but they did not explain the mechanism connecting it to the ballot.",
+      punch: `Even if I grant "${shortTarget}," how does that actually get you to your conclusion? ${followThrough}`,
+      reason: `Their line "${targetQuote}" names a premise, but it never explains the mechanism connecting that premise to the ballot.`,
+      targetQuote,
       title: "Break the missing link",
     };
   }
 
-  if (absolutePattern.test(trimmed)) {
+  if (absolutePattern.test(targetSentence)) {
     return {
       label: "Overclaim",
-      punch: "That only works if your claim holds in every case, so why should the judge buy wording that absolute?",
-      reason: "Universal phrasing creates an easy counterexample lane and makes the turn more brittle than it sounds.",
+      punch: `That only works if "${shortTarget}" holds in every case, so why should the judge buy wording that absolute? ${followThrough}`,
+      reason: `Their line "${targetQuote}" uses universal phrasing, which opens an easy counterexample lane and makes the turn more brittle than it sounds.`,
+      targetQuote,
       title: "Punish the overclaim",
     };
   }
 
-  if (contestedTermPattern.test(trimmed) && !definitionPattern.test(trimmed)) {
+  if (contestedTermPattern.test(targetSentence) && !definitionPattern.test(targetSentence)) {
     return {
       label: "Definition gap",
-      punch: "What do you mean by that key term, and why should the judge accept your version instead of mine?",
-      reason: "They are leaning on a contested word without locking down the standard behind it.",
+      punch: `When you say "${shortTarget}," what do you mean by the key term there, and why should the judge accept your standard over mine? ${followThrough}`,
+      reason: `Their line "${targetQuote}" leans on a contested word without locking down the standard behind it.`,
+      targetQuote,
       title: "Force the definition",
     };
   }
 
-  if (!weighingPattern.test(trimmed)) {
+  if (!weighingPattern.test(targetSentence)) {
     return {
       label: "Weak comparison",
-      punch: "Why does that matter more than the harm on my side, instead of just existing alongside it?",
-      reason: "They offered a point, but not a reason the judge should rank it above your best impact.",
+      punch: `Why does "${shortTarget}" matter more than the harm on my side, instead of just existing alongside it? ${followThrough}`,
+      reason: `Their line "${targetQuote}" offers a point, but not a reason the judge should rank it above your best impact.`,
+      targetQuote,
       title: "Win the weighing",
     };
   }
 
   return {
     label: "Soft seam",
-    punch: "Even if part of that is true, it still does not get you to a better ballot than mine.",
-    reason: "The line is more complete than most, so the best move is to concede the premise and beat it on comparison.",
+    punch: `Even if "${shortTarget}" is partly true, it still does not get you to a better ballot than mine. ${followThrough}`,
+    reason: `Their line "${targetQuote}" is more complete than most, so the cleanest move is to concede the safe part and beat the leap to the ballot on comparison.`,
+    targetQuote,
     title: "Turn the conclusion",
   };
 }
@@ -415,6 +871,11 @@ export default function DebateExperience({
   const [input, setInput] = useState("");
   const [isThinking, setIsThinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [evidenceState, setEvidenceState] = useState<EvidenceState>({
+    error: null,
+    result: null,
+    status: "idle",
+  });
   const [isRouting, startTransition] = useTransition();
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -481,8 +942,8 @@ export default function DebateExperience({
   }
 
   const userTurns = session.messages.filter((message) => message.speaker === "You").length;
-  const latestUserTurn =
-    [...session.messages].reverse().find((message) => message.speaker === "You")?.text ?? "";
+  const latestUserContext = getLatestUserTurnContext(session);
+  const latestUserTurn = latestUserContext.userText;
   const latestOpponentTurn =
     [...session.messages].reverse().find((message) => message.speaker === "AI Opponent")?.text ??
     "";
@@ -491,8 +952,81 @@ export default function DebateExperience({
   const liveCoach = buildLiveCoach(session, input, opponentPersonality);
   const draftWordCount = countWords(input);
   const feedbackSourceText = input.trim() ? input : latestUserTurn;
-  const turnFeedback = buildTurnFeedback(feedbackSourceText);
-  const attackWindow = buildAttackWindow(session, latestOpponentTurn);
+  const feedbackOpponentText = input.trim() ? latestOpponentTurn : latestUserContext.opponentText;
+  const turnFeedback = buildTurnFeedback(feedbackSourceText, feedbackOpponentText);
+  const attackWindow = buildAttackWindow(session, latestOpponentTurn, latestUserTurn);
+  const factChecksByMessage = useMemo(
+    () =>
+      Object.fromEntries(
+        session.messages.map((message) => [message.id, buildFactCheckClaims(message)]),
+      ) as Record<string, FactCheckClaim[]>,
+    [session.messages],
+  );
+
+  async function generateEvidence() {
+    const evidenceRequest: EvidenceRequest = {
+      topic: session.topic,
+      userSide: session.userSide,
+      opponentSide: session.opponentSide,
+      transcript: sessionToTranscript(session),
+      focus: input.trim() || latestOpponentTurn || latestUserTurn || session.topic,
+      maxCards: 8,
+    };
+    const fallback = buildHeuristicEvidence(evidenceRequest);
+
+    setEvidenceState({
+      error: null,
+      result: evidenceState.result,
+      status: "loading",
+    });
+
+    try {
+      const response = await fetch("/api/evidence", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          request: evidenceRequest,
+        }),
+      });
+
+      const data = (await response.json()) as EvidenceResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error || "Evidence generation failed.");
+      }
+
+      const nextResult = coerceEvidenceResult(data.result, fallback);
+      setEvidenceState({
+        error: null,
+        result: nextResult,
+        status: "ready",
+      });
+    } catch {
+      setEvidenceState({
+        error: "Live evidence was unavailable, so the research desk loaded source leads.",
+        result: fallback,
+        status: "ready",
+      });
+    }
+  }
+
+  function insertEvidenceIntoDraft(card: EvidenceCard) {
+    const line = card.debateLine.trim();
+
+    setInput((current) => {
+      if (!current.trim()) {
+        return line;
+      }
+
+      const trimmedCurrent = current.trimEnd();
+      const spacer =
+        /[.!?]$/.test(trimmedCurrent) || trimmedCurrent.length > 120 ? "\n\n" : " ";
+
+      return `${trimmedCurrent}${spacer}${line}`;
+    });
+  }
 
   return (
     <main className="min-h-screen px-6 py-8 sm:px-8">
@@ -567,9 +1101,25 @@ export default function DebateExperience({
 
         <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
           <section className="theme-panel rounded-[2rem] border p-4 md:p-6">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+                  Transcript + Light Fact Check
+                </p>
+                <p className="theme-copy mt-2 text-sm leading-6">
+                  Claim markers stay small on purpose: they flag which factual lines look solid,
+                  which need proof, and which sound overstated.
+                </p>
+              </div>
+              <span className="theme-pill rounded-full border px-4 py-2 text-sm">
+                Claim check ready
+              </span>
+            </div>
+
             <div className="max-h-[55vh] overflow-y-auto pr-1">
               {session.messages.map((message) => {
                 const isUser = message.speaker === "You";
+                const messageClaims = factChecksByMessage[message.id] ?? [];
 
                 return (
                   <article
@@ -580,12 +1130,17 @@ export default function DebateExperience({
                         : "theme-chat-opponent mr-auto max-w-3xl"
                     }`}
                   >
-                    <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
-                      {message.speaker}
-                    </p>
-                    <p className="theme-strong mt-3 text-base leading-7">
-                      {message.text}
-                    </p>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
+                        {message.speaker}
+                      </p>
+                      {messageClaims.length > 0 ? (
+                        <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.14em]">
+                          {messageClaims.length} claim{messageClaims.length === 1 ? "" : "s"}
+                        </span>
+                      ) : null}
+                    </div>
+                    <FactCheckedMessageText claims={messageClaims} text={message.text} />
                   </article>
                 );
               })}
@@ -647,6 +1202,20 @@ export default function DebateExperience({
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="button"
+                    disabled={evidenceState.status === "loading"}
+                    onClick={() => {
+                      void generateEvidence();
+                    }}
+                    className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
+                  >
+                    {evidenceState.status === "loading"
+                      ? "Finding evidence..."
+                      : evidenceState.result
+                        ? "Refresh evidence"
+                        : "Generate Evidence"}
+                  </button>
+                  <button
+                    type="button"
                     disabled={isThinking}
                     onClick={() => {
                       setInput("");
@@ -698,16 +1267,16 @@ export default function DebateExperience({
                         </div>
                         <span
                           className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${
-                            turnFeedback.score >= 80
+                            turnFeedback.score >= 84
                               ? "theme-status-anchor"
-                              : turnFeedback.score >= 64
+                              : turnFeedback.score >= 68
                                 ? "theme-status-developing"
                                 : "theme-status-collapse"
                           }`}
                         >
-                          {turnFeedback.score >= 80
+                          {turnFeedback.score >= 84
                             ? "strong"
-                            : turnFeedback.score >= 64
+                            : turnFeedback.score >= 68
                               ? "live"
                               : "fragile"}
                         </span>
@@ -715,13 +1284,57 @@ export default function DebateExperience({
                       <p className="theme-copy mt-4 text-sm leading-6">
                         {turnFeedback.critique}
                       </p>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {turnFeedback.breakdown.map((item) => (
+                          <div
+                            key={item.label}
+                            className="theme-subcard rounded-[1.1rem] border p-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="text-sm font-semibold">{item.label}</p>
+                              <span
+                                className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] ${
+                                  item.tone === "accent"
+                                    ? "theme-status-anchor"
+                                    : item.tone === "neutral"
+                                      ? "theme-status-developing"
+                                      : "theme-status-collapse"
+                                }`}
+                              >
+                                {item.score}
+                              </span>
+                            </div>
+                            <p className="theme-copy mt-2 text-xs leading-5">{item.note}</p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="theme-subcard rounded-[1.35rem] border p-4">
                       <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                        Coach read
+                        Line-by-line read
                       </p>
-                      <p className="theme-copy mt-2 text-sm leading-6">
+                      <div className="mt-3 grid gap-3">
+                        <div className="theme-surface rounded-[1.1rem] border p-3">
+                          <p className="theme-muted text-[0.68rem] uppercase tracking-[0.16em]">
+                            Your line
+                          </p>
+                          <p className="theme-strong mt-2 text-sm leading-6 break-words">
+                            &ldquo;{turnFeedback.userQuote}&rdquo;
+                          </p>
+                        </div>
+                        {turnFeedback.opponentQuote ? (
+                          <div className="theme-surface rounded-[1.1rem] border p-3">
+                            <p className="theme-muted text-[0.68rem] uppercase tracking-[0.16em]">
+                              Line you are answering
+                            </p>
+                            <p className="theme-copy mt-2 text-sm leading-6 break-words">
+                              &ldquo;{turnFeedback.opponentQuote}&rdquo;
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                      <p className="theme-copy mt-4 text-sm leading-6">
                         {turnFeedback.strongestPart}
                       </p>
                       <p className="theme-strong mt-3 text-sm leading-6">
@@ -756,6 +1369,14 @@ export default function DebateExperience({
                           {attackWindow.label}
                         </span>
                       </div>
+                      <div className="theme-subcard mt-4 rounded-[1.1rem] border p-3">
+                        <p className="theme-muted text-[0.68rem] uppercase tracking-[0.16em]">
+                          Target quote
+                        </p>
+                        <p className="theme-strong mt-2 text-sm leading-6 break-words">
+                          &ldquo;{attackWindow.targetQuote}&rdquo;
+                        </p>
+                      </div>
                       <p className="theme-copy mt-4 text-sm leading-6">
                         {attackWindow.reason}
                       </p>
@@ -780,6 +1401,44 @@ export default function DebateExperience({
                 )}
               </section>
             ) : null}
+
+            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                    Research Desk
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold">Generate evidence</h2>
+                </div>
+                <button
+                  type="button"
+                  disabled={evidenceState.status === "loading"}
+                  onClick={() => {
+                    void generateEvidence();
+                  }}
+                  className="theme-button-secondary rounded-full border px-4 py-2 text-sm font-medium transition disabled:opacity-60"
+                >
+                  {evidenceState.status === "loading"
+                    ? "Finding evidence..."
+                    : evidenceState.result
+                      ? "Refresh"
+                      : "Generate"}
+                </button>
+              </div>
+
+              <div className="mt-5 max-h-[34rem] overflow-y-auto pr-1">
+                <EvidenceDeck
+                  result={evidenceState.result}
+                  status={evidenceState.status}
+                  error={evidenceState.status === "error" ? evidenceState.error : null}
+                  emptyCopy="Pull in two stats, two studies, two historical examples, and two named authorities without leaving the round."
+                  onUseCard={insertEvidenceIntoDraft}
+                />
+                {evidenceState.error && evidenceState.status === "ready" ? (
+                  <p className="theme-muted mt-4 text-sm leading-6">{evidenceState.error}</p>
+                ) : null}
+              </div>
+            </section>
 
             <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
               <p className="theme-muted text-xs uppercase tracking-[0.28em]">

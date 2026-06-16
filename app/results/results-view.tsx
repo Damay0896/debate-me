@@ -17,6 +17,7 @@ import {
   createId,
   getOpponentPersonalityMeta,
   getReplyStyleMeta,
+  sessionToTranscript,
   type DebateAnalysis,
   type DebateMetric,
   type DebateSession,
@@ -28,6 +29,13 @@ import {
   needsAnalysisRefresh,
   saveAnalysis,
 } from "@/lib/debate-storage";
+import {
+  buildHeuristicEvidence,
+  coerceEvidenceResult,
+  type EvidenceCard,
+  type EvidenceRequest,
+  type EvidenceResult,
+} from "@/lib/research";
 
 import { buildReportInsights } from "./report-insights";
 import { ResultsReportPanels } from "./report-panels";
@@ -39,6 +47,18 @@ type ResultsViewProps = {
 type AnalyzeResponse = {
   analysis?: DebateAnalysis;
   source?: "heuristic" | "openrouter";
+};
+
+type EvidenceResponse = {
+  error?: string;
+  result?: EvidenceResult;
+  source?: "heuristic" | "openrouter";
+};
+
+type EvidenceState = {
+  error: string | null;
+  result: EvidenceResult | null;
+  status: "idle" | "loading" | "ready" | "error";
 };
 
 function cx(...values: Array<string | false | null | undefined>) {
@@ -148,6 +168,11 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     source: "heuristic",
   });
   const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
+  const [evidenceState, setEvidenceState] = useState<EvidenceState>({
+    error: null,
+    result: null,
+    status: "idle",
+  });
   const [isRouting, startTransition] = useTransition();
 
   useEffect(() => {
@@ -306,11 +331,81 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   const reportSections = [
     { href: "#verdict", label: "Verdict" },
     { href: "#receipts", label: "Receipts" },
+    { href: "#research", label: "Research" },
     { href: "#skills", label: "Skills" },
     { href: "#coach", label: "Coaching" },
     { href: "#map", label: "Map" },
     { href: "#transcript", label: "Transcript" },
   ];
+  const heuristicEvidence = buildHeuristicEvidence({
+    topic: activeSession.topic,
+    userSide: activeSession.userSide,
+    opponentSide: activeSession.opponentSide,
+    transcript: sessionToTranscript(activeSession),
+    focus: report.strongestArgument || activeSession.topic,
+    maxCards: 8,
+  });
+  const displayedEvidenceState: EvidenceState =
+    evidenceState.status === "loading"
+      ? {
+          ...evidenceState,
+          result: evidenceState.result ?? heuristicEvidence,
+        }
+      : evidenceState.result
+        ? evidenceState
+        : {
+            error: null,
+            result: heuristicEvidence,
+            status: "ready",
+          };
+
+  async function generateEvidence() {
+    const evidenceRequest: EvidenceRequest = {
+      topic: activeSession.topic,
+      userSide: activeSession.userSide,
+      opponentSide: activeSession.opponentSide,
+      transcript: sessionToTranscript(activeSession),
+      focus: report.strongestArgument || activeSession.topic,
+      maxCards: 8,
+    };
+    const fallback = heuristicEvidence;
+
+    setEvidenceState((current) => ({
+      error: null,
+      result: current.result,
+      status: "loading",
+    }));
+
+    try {
+      const response = await fetch("/api/evidence", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          request: evidenceRequest,
+        }),
+      });
+
+      const data = (await response.json()) as EvidenceResponse;
+
+      if (!response.ok) {
+        throw new Error(data.error || "Evidence generation failed.");
+      }
+
+      setEvidenceState({
+        error: null,
+        result: coerceEvidenceResult(data.result, fallback),
+        status: "ready",
+      });
+    } catch {
+      setEvidenceState({
+        error: "Live evidence was unavailable, so the report loaded research leads instead.",
+        result: fallback,
+        status: "ready",
+      });
+    }
+  }
 
   function continueDebate() {
     startTransition(() => {
@@ -372,6 +467,14 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
     }
   }
 
+  async function copyEvidenceForReplay(card: EvidenceCard) {
+    try {
+      await navigator.clipboard.writeText(card.debateLine);
+    } catch {
+      // Silent failure keeps the report flow simple if clipboard access is denied.
+    }
+  }
+
   return (
     <main className="report-shell relative min-h-screen overflow-hidden px-6 py-8 sm:px-8">
       <div className="report-page-glow pointer-events-none absolute inset-0" />
@@ -427,6 +530,20 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                 className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
               >
                 Replay the Debate Better
+              </button>
+              <button
+                type="button"
+                disabled={evidenceState.status === "loading"}
+                onClick={() => {
+                  void generateEvidence();
+                }}
+                className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
+              >
+                {evidenceState.status === "loading"
+                  ? "Finding evidence..."
+                  : evidenceState.result
+                    ? "Refresh evidence"
+                    : "Generate evidence"}
               </button>
               <button
                 type="button"
@@ -750,7 +867,15 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
           </section>
         </section>
 
-        <ResultsReportPanels analysis={report} session={session} />
+        <ResultsReportPanels
+          analysis={report}
+          evidenceState={displayedEvidenceState}
+          onCopyEvidence={copyEvidenceForReplay}
+          onGenerateEvidence={() => {
+            void generateEvidence();
+          }}
+          session={session}
+        />
 
         <section
           id="transcript"

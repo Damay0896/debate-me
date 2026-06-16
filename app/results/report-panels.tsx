@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 
+import { EvidenceDeck } from "@/components/evidence-deck";
 import type {
   ArgumentFrame,
   ArgumentMap,
@@ -15,6 +16,12 @@ import type {
   OpponentCaseReview,
   TranscriptReceipt,
 } from "@/lib/debate";
+import {
+  buildResearchSummary,
+  factCheckStatusMeta,
+  type EvidenceCard,
+  type EvidenceResult,
+} from "@/lib/research";
 
 import { buildReportInsights } from "./report-insights";
 
@@ -1190,11 +1197,149 @@ function PressureCards({ collapsePoints }: { collapsePoints: CollapsePoint[] }) 
   );
 }
 
+type ResearchEvidenceState = {
+  error: string | null;
+  result: EvidenceResult | null;
+  status: "idle" | "loading" | "ready" | "error";
+};
+
+function ResearchUpgradePanel({
+  evidenceState,
+  onCopyEvidence,
+  onGenerateEvidence,
+  session,
+}: {
+  evidenceState: ResearchEvidenceState;
+  onCopyEvidence: (card: EvidenceCard) => void;
+  onGenerateEvidence: () => void;
+  session: DebateSession;
+}) {
+  const researchSummary = buildResearchSummary(session, evidenceState.result);
+
+  return (
+    <div className="grid gap-4">
+      <div className="theme-surface rounded-[1.6rem] border p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+              Strongest fact lane
+            </p>
+            <h3 className="mt-3 text-xl font-semibold">The empirical version of your case</h3>
+          </div>
+          <button
+            type="button"
+            disabled={evidenceState.status === "loading"}
+            onClick={onGenerateEvidence}
+            className="theme-button-secondary rounded-full border px-4 py-2 text-sm font-medium transition disabled:opacity-60"
+          >
+            {evidenceState.status === "loading"
+              ? "Finding evidence..."
+              : evidenceState.result
+                ? "Refresh evidence"
+                : "Generate Evidence"}
+          </button>
+        </div>
+        <p className="theme-strong mt-4 text-sm leading-6">
+          {researchSummary.strongestFactArgument}
+        </p>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+        <article className="theme-surface rounded-[1.6rem] border p-5">
+          <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+            Unsupported claims you made
+          </p>
+          <div className="mt-4 space-y-3">
+            {researchSummary.unsupportedClaims.slice(0, 3).map((claim) => {
+              const statusMeta = factCheckStatusMeta[claim.status];
+
+              return (
+                <div key={claim.id} className="theme-subcard rounded-[1.2rem] border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm font-semibold">{statusMeta.label}</p>
+                    <span
+                      className={cx(
+                        "rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em]",
+                        statusMeta.chipClass,
+                      )}
+                    >
+                      {statusMeta.emoji} {claim.category}
+                    </span>
+                  </div>
+                  <p className="theme-strong mt-3 text-sm leading-6">{claim.claim}</p>
+                  <p className="theme-copy mt-3 text-sm leading-6">{claim.explanation}</p>
+                  {claim.sourceLabel ? (
+                    <p className="theme-muted mt-3 text-xs leading-5">
+                      Source angle: {claim.sourceLabel}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+            {researchSummary.unsupportedClaims.length === 0 ? (
+              <div className="theme-subcard rounded-[1.2rem] border p-4">
+                <p className="theme-copy text-sm leading-6">
+                  You did not leave behind any obvious unsupported factual claims in the saved transcript. The next leap is better proof density, not emergency cleanup.
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </article>
+
+        <article className="theme-surface rounded-[1.6rem] border p-5">
+          <p className="theme-muted text-xs uppercase tracking-[0.24em]">
+            Rewrite the weakest claim
+          </p>
+          <div className="mt-4 grid gap-3">
+            {researchSummary.weakestClaimOriginal ? (
+              <div className="theme-subcard rounded-[1.2rem] border p-4">
+                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                  Original line
+                </p>
+                <p className="theme-copy mt-2 text-sm leading-6">
+                  {researchSummary.weakestClaimOriginal}
+                </p>
+              </div>
+            ) : null}
+            <div className="theme-subcard rounded-[1.2rem] border p-4">
+              <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                Better version
+              </p>
+              <p className="theme-strong mt-2 text-sm leading-6">
+                {researchSummary.weakestClaimRewrite}
+              </p>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <EvidenceDeck
+        result={evidenceState.result}
+        status={evidenceState.status}
+        error={evidenceState.status === "error" ? evidenceState.error : null}
+        emptyCopy="The report can build a full research pack with cards for statistics, studies, historical examples, and named authorities."
+        actionLabel="Copy for replay"
+        onUseCard={onCopyEvidence}
+      />
+
+      {evidenceState.error && evidenceState.status === "ready" ? (
+        <p className="theme-muted text-sm leading-6">{evidenceState.error}</p>
+      ) : null}
+    </div>
+  );
+}
+
 export function ResultsReportPanels({
   analysis,
+  evidenceState,
+  onCopyEvidence,
+  onGenerateEvidence,
   session,
 }: {
   analysis: DebateAnalysis;
+  evidenceState: ResearchEvidenceState;
+  onCopyEvidence: (card: EvidenceCard) => void;
+  onGenerateEvidence: () => void;
   session: DebateSession;
 }) {
   const insights = buildReportInsights(session, analysis);
@@ -1243,6 +1388,21 @@ export function ResultsReportPanels({
             </Panel>
           </div>
         </div>
+      </section>
+
+      <section id="research" className="scroll-mt-28">
+        <Panel
+          eyebrow="Research Upgrade"
+          title="Unsupported claims, missing evidence, and the fact lane you should have used"
+          description="This is the research layer: what needed proof, what evidence would have made the round harder to answer, and how to rewrite the weakest unsupported line."
+        >
+          <ResearchUpgradePanel
+            evidenceState={evidenceState}
+            onCopyEvidence={onCopyEvidence}
+            onGenerateEvidence={onGenerateEvidence}
+            session={session}
+          />
+        </Panel>
       </section>
 
       <section id="skills" className="scroll-mt-28">

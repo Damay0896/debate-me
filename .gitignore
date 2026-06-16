@@ -17,6 +17,8 @@
 /.next/
 /.next-link/
 /.next-local/
+/.next-run-*/
+/.next-codex/
 /out/
 
 # production
@@ -33,6 +35,10 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .tmp-dev-*.log
+.tmp-dev-*.err
+.codex-dev-*.log
+.codex-dev-*.out
+.codex-dev-*.err
 
 # env files (can opt-in for committing if needed)
 .env*

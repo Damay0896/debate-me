@@ -560,6 +560,17 @@ html[data-theme="light"] .theme-accent-chip {
   overflow: hidden;
 }
 
+.report-shell :is(.flex, .grid) > * {
+  min-width: 0;
+}
+
+.report-shell :is(h1, h2, h3, h4, p, blockquote, li) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  hyphens: auto;
+}
+
 .report-brief-card::before,
 .report-feature-card::before,
 .report-panel-shell::before,
@@ -751,6 +762,10 @@ html[data-theme="light"] .theme-accent-chip {
   display: none;
 }
 
+.export-mode .site-footer {
+  display: none;
+}
+
 .export-mode .theme-toggle {
   display: none;
 }
@@ -822,6 +837,7 @@ html[data-theme="light"] .theme-accent-chip {
   }
 
   .theme-toggle,
+  .site-footer,
   .export-actions {
     display: none !important;
   }

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 
-import ThemeToggle from "@/components/theme-toggle";
+import SiteFooter from "@/components/site-footer";
+import SiteHeader from "@/components/site-header";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { THEME_STYLE_BLOCK } from "@/lib/theme-styles";
 
@@ -25,12 +26,9 @@ export default function RootLayout({
         </Script>
         <style id="theme-overrides">{THEME_STYLE_BLOCK}</style>
         <div className="min-h-full">
-          <div className="app-topbar relative z-40">
-            <div className="mx-auto flex max-w-6xl justify-end px-6 pt-4 sm:px-8">
-              <ThemeToggle />
-            </div>
-          </div>
+          <SiteHeader />
           {children}
+          <SiteFooter />
         </div>
       </body>
     </html>

@@ -26,6 +26,7 @@ import {
   loadAnalysisRecord,
   listStoredSessions,
 } from "@/lib/debate-storage";
+import { HOW_IT_WORKS_STEPS, ORIGIN_NOTES, SAMPLE_TESTIMONIALS } from "@/lib/site-content";
 
 const sideCopy: Record<SideChoice, string> = {
   Pro: "You'll defend the statement.",
@@ -47,6 +48,29 @@ type RecentRound = {
   mode: string;
   persona: string;
 };
+
+const EXPLORE_PAGES = [
+  {
+    href: "/about",
+    label: "About",
+    description: "What the app is for, who it helps, and what it actually trains.",
+  },
+  {
+    href: "/why-we-built-this",
+    label: "Why We Built This",
+    description: "The origin story, the frustrations, and the design bets behind the app.",
+  },
+  {
+    href: "/how-it-works",
+    label: "How It Works",
+    description: "A clean walkthrough of the setup, live round, and premium report flow.",
+  },
+  {
+    href: "/testimonials",
+    label: "Testimonials",
+    description: "Illustrative praise and quick social-proof flavor for the product.",
+  },
+] as const;
 
 function formatRelativeTime(value: string) {
   const then = new Date(value).getTime();
@@ -601,6 +625,68 @@ export default function Home() {
           </div>
         </section>
       ) : null}
+
+      <section className="mx-auto mt-8 max-w-6xl">
+        <div className="grid gap-8 lg:grid-cols-[1.04fr_0.96fr]">
+          <div className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
+            <p className="theme-kicker text-xs uppercase tracking-[0.32em]">Explore Debate Me</p>
+            <h2 className="mt-3 text-3xl font-semibold">
+              More than a single landing page now.
+            </h2>
+            <p className="theme-copy mt-4 max-w-2xl text-sm leading-7">
+              If someone lands here and wants more context, there are now proper pages for the
+              story, the workflow, and the kind of people this product is built for.
+            </p>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              {EXPLORE_PAGES.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="theme-surface rounded-[1.5rem] border p-5 transition hover:-translate-y-0.5"
+                >
+                  <p className="text-lg font-semibold">{item.label}</p>
+                  <p className="theme-copy mt-3 text-sm leading-7">{item.description}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            <div className="theme-panel rounded-[2rem] border p-6 md:p-8">
+              <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Why It Exists</p>
+              <h2 className="mt-3 text-3xl font-semibold">Built for sharper reps, not empty encouragement.</h2>
+              <div className="mt-6 space-y-3">
+                {ORIGIN_NOTES.slice(0, 2).map((item) => (
+                  <div key={item.title} className="theme-subcard rounded-[1.35rem] border p-4">
+                    <p className="text-sm font-semibold">{item.title}</p>
+                    <p className="theme-copy mt-2 text-sm leading-7">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
+              <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Sample Praise</p>
+              <p className="mt-3 text-lg leading-8">
+                &ldquo;{SAMPLE_TESTIMONIALS[0].quote}&rdquo;
+              </p>
+              <p className="theme-copy mt-4 text-sm">
+                {SAMPLE_TESTIMONIALS[0].name}, {SAMPLE_TESTIMONIALS[0].role}
+              </p>
+
+              <div className="mt-6 grid gap-3">
+                {HOW_IT_WORKS_STEPS.slice(0, 2).map((item) => (
+                  <div key={item.title} className="theme-surface rounded-[1.25rem] border p-4">
+                    <p className="theme-muted text-xs uppercase tracking-[0.22em]">{item.title}</p>
+                    <p className="theme-copy mt-2 text-sm leading-7">{item.body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }
