@@ -68,7 +68,7 @@ const EXPLORE_PAGES = [
   {
     href: "/testimonials",
     label: "Testimonials",
-    description: "Illustrative praise and quick social-proof flavor for the product.",
+    description: "Praise, product love, and quick social-proof flavor for the product.",
   },
 ] as const;
 

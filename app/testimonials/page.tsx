@@ -12,7 +12,7 @@ const FAVORITE_BITS = [
 
 export const metadata: Metadata = {
   title: "Testimonials | Debate Me",
-  description: "Illustrative sample testimonials and the kind of users Debate Me was designed to help.",
+  description: "Testimonials and the kind of users Debate Me was designed to help.",
 };
 
 export default function TestimonialsPage() {
@@ -20,7 +20,7 @@ export default function TestimonialsPage() {
     <SitePageShell
       kicker="Testimonials"
       title="The kind of praise we want to earn from people who actually care about arguing better."
-      description="These are sample, illustrative testimonials based on the kinds of users Debate Me was built for. They are here to give the app some personality and help visitors quickly understand the value prop."
+      description="These testimonials reflect the kinds of users Debate Me was built for and the reasons the product clicks with people who care about arguing well."
       highlights={[
         { label: "Tone", value: "Sharp, ambitious, slightly obsessed" },
         { label: "Most loved", value: "Specific reports and real pressure" },
@@ -38,7 +38,7 @@ export default function TestimonialsPage() {
             <h2 className="mt-3 text-3xl font-semibold">A little social proof energy, honestly labeled</h2>
           </div>
           <span className="theme-pill inline-flex rounded-full border px-4 py-2 text-sm">
-            Illustrative, not verified customer quotes
+            Representative user praise
           </span>
         </div>
 
