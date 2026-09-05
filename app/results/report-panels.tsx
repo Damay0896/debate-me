@@ -96,20 +96,15 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section
+    <details
       id={id}
-      className="theme-card report-panel-shell report-rise scroll-mt-28 self-start rounded-[2rem] border p-6 shadow-xl backdrop-blur"
+      className="report-disclosure scroll-mt-28"
     >
-      <p className="theme-muted text-xs uppercase tracking-[0.32em]">{eyebrow}</p>
-      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <h2 className="theme-strong max-w-2xl text-2xl font-semibold text-balance">
-          {title}
-        </h2>
-        <p className="theme-muted max-w-xl text-sm leading-6">{description}</p>
-      </div>
-      <div className="report-section-rule mt-5" />
-      <div className="mt-6">{children}</div>
-    </section>
+      <summary className="cursor-pointer py-4 font-semibold">{eyebrow}</summary>
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <p className="theme-muted mt-2 text-sm leading-6">{description}</p>
+      <div className="my-5">{children}</div>
+    </details>
   );
 }
 

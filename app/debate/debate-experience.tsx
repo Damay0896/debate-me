@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
@@ -876,7 +875,7 @@ export default function DebateExperience({
     result: null,
     status: "idle",
   });
-  const [showPrepTools, setShowPrepTools] = useState(false);
+  const [activeTool, setActiveTool] = useState<"coach" | "evidence" | "prep" | null>(null);
   const [isRouting, startTransition] = useTransition();
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -889,7 +888,8 @@ export default function DebateExperience({
   }, [session]);
 
   useEffect(() => {
-    transcriptEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const viewport = transcriptEndRef.current?.parentElement;
+    if (viewport) viewport.scrollTo({ top: viewport.scrollHeight, behavior: "smooth" });
   }, [session.messages.length, isThinking]);
 
   async function sendMessage() {
@@ -916,6 +916,7 @@ export default function DebateExperience({
         }),
       });
 
+      if (!response.ok) throw new Error("Debate request failed");
       const data = (await response.json()) as { reply?: string };
       const reply =
         typeof data.reply === "string" && data.reply.trim()
@@ -966,6 +967,7 @@ export default function DebateExperience({
   );
 
   async function generateEvidence() {
+    setActiveTool("evidence");
     const evidenceRequest: EvidenceRequest = {
       topic: session.topic,
       userSide: session.userSide,
@@ -1015,6 +1017,8 @@ export default function DebateExperience({
   }
 
   function insertEvidenceIntoDraft(card: EvidenceCard) {
+    setActiveTool(null);
+    document.getElementById("argument")?.focus();
     const line = card.debateLine.trim();
 
     setInput((current) => {
@@ -1031,565 +1035,88 @@ export default function DebateExperience({
   }
 
   return (
-    <main className="min-h-screen px-6 py-8 sm:px-8">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <header className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div>
-              <p className="theme-kicker text-sm uppercase tracking-[0.35em]">
-                Live room
-              </p>
-              <h1 className="mt-3 text-4xl font-semibold text-balance">
-                {session.topic}
-              </h1>
-              <p className="theme-copy mt-3 max-w-3xl text-base leading-7">
-                {opponentPersonality.label} is active, so expect pressure that sounds like{" "}
-                {opponentPersonality.description.toLowerCase()} Replies are set to{" "}
-                {replyStyle.label.toLowerCase()}.
-              </p>
-              <div className="theme-copy mt-4 flex flex-wrap gap-3 text-sm">
-                <span className="theme-pill rounded-full border px-4 py-2">
-                  You: {session.userSide}
-                </span>
-                <span className="theme-pill rounded-full border px-4 py-2">
-                  Opponent: {session.opponentSide}
-                </span>
-                <span className="theme-pill rounded-full border px-4 py-2">
-                  Persona: {opponentPersonality.label}
-                </span>
-                <span className="theme-pill rounded-full border px-4 py-2">
-                  Mode: {replyStyle.label}
-                </span>
-                <span className="theme-pill rounded-full border px-4 py-2">
-                  Coach: {session.liveFeedbackMode ? "Sparring" : "Standard"}
-                </span>
-                <span className="theme-pill rounded-full border px-4 py-2">
-                  {userTurns} user turn{userTurns === 1 ? "" : "s"}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/"
-                className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition"
-              >
-                New room
-              </Link>
-              <button
-                type="button"
-                disabled={isRouting}
-                onClick={openResults}
-                className="theme-button-primary rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
-              >
-                See report
-              </button>
-            </div>
-          </div>
-        </header>
-
-        {initialCoachFocus.trim() ? (
-          <section className="theme-panel report-rise rounded-[1.8rem] border p-5">
-            <p className="theme-kicker text-xs uppercase tracking-[0.3em]">
-              Replay Focus
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold">Fix the last round on purpose.</h2>
-            <p className="theme-copy mt-3 max-w-4xl text-base leading-7">
-              {initialCoachFocus}
-            </p>
-          </section>
-        ) : null}
-
-        <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr] xl:items-start">
-          <section className="theme-panel rounded-[2rem] border p-4 md:p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="theme-muted text-xs uppercase tracking-[0.24em]">
-                  Live round + light fact check
-                </p>
-                <p className="theme-copy mt-2 text-sm leading-6">
-                  Claim markers stay subtle: they flag which factual lines look solid, which need
-                  proof, and which sound overstated.
-                </p>
-              </div>
-              <span className="theme-pill rounded-full border px-4 py-2 text-sm">
-                Claim check ready
-              </span>
-            </div>
-
-            <div className="max-h-[55vh] overflow-y-auto pr-1">
-              {session.messages.map((message) => {
-                const isUser = message.speaker === "You";
-                const messageClaims = factChecksByMessage[message.id] ?? [];
-
-                return (
-                  <article
-                    key={message.id}
-                    className={`mb-4 rounded-[1.6rem] border p-5 ${
-                      isUser
-                        ? "theme-chat-user ml-auto max-w-3xl"
-                        : "theme-chat-opponent mr-auto max-w-3xl"
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
-                        {message.speaker}
-                      </p>
-                      {messageClaims.length > 0 ? (
-                        <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.14em]">
-                          {messageClaims.length} claim{messageClaims.length === 1 ? "" : "s"}
-                        </span>
-                      ) : null}
-                    </div>
-                    <FactCheckedMessageText claims={messageClaims} text={message.text} />
-                  </article>
-                );
-              })}
-
-              {isThinking && (
-                <article className="theme-chat-opponent mb-4 mr-auto max-w-3xl rounded-[1.6rem] border p-5">
-                  <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
-                    Opponent
-                  </p>
-                  <p className="theme-strong mt-3 text-base leading-7">
-                    {getOpponentThinkingCopy(session)}
-                  </p>
-                </article>
-              )}
-
-              <div ref={transcriptEndRef} />
-            </div>
-
-            <div className="theme-surface mt-4 rounded-[1.8rem] border p-4">
-              <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                <div>
-                  <label
-                    htmlFor="argument"
-                    className="theme-copy mb-3 block text-sm font-medium"
-                  >
-                    Your next shot
-                  </label>
-                  <p className="theme-muted text-sm">
-                    {session.liveFeedbackMode
-                      ? "Private Coach is scoring this turn live."
-                      : `Round read: ${liveCoach.momentumRead}`}
-                  </p>
-                </div>
-                <span className="theme-pill rounded-full border px-4 py-2 text-sm">
-                  {draftWordCount > 0 ? `${draftWordCount} draft words` : "Draft empty"}
-                </span>
-              </div>
-
-              <textarea
-                id="argument"
-                rows={5}
-                className="theme-input mt-4 w-full rounded-[1.5rem] border px-4 py-4 text-base outline-none transition"
-                placeholder={getDebateInputPlaceholder(session.replyStyle)}
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-                    event.preventDefault();
-                    void sendMessage();
-                  }
-                }}
-              />
-
-              <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <p className="theme-muted text-sm">
-                  Tip: answer one thing cleanly. Use Ctrl/Cmd + Enter to send.
-                </p>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    disabled={evidenceState.status === "loading"}
-                    onClick={() => {
-                      void generateEvidence();
-                    }}
-                    className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
-                  >
-                    {evidenceState.status === "loading"
-                      ? "Finding evidence..."
-                      : evidenceState.result
-                        ? "Refresh evidence"
-                        : "Generate Evidence"}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isThinking}
-                    onClick={() => {
-                      setInput("");
-                      setError(null);
-                    }}
-                    className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
-                  >
-                    Clear draft
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isThinking || input.trim() === ""}
-                    onClick={() => {
-                      void sendMessage();
-                    }}
-                    className="theme-button-primary rounded-full px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {isThinking ? "Opponent thinking..." : "Send turn"}
-                  </button>
-                </div>
-              </div>
-
-              {error ? <p className="theme-error mt-4 text-sm">{error}</p> : null}
-            </div>
-          </section>
-
-          <aside className="grid gap-4">
-            {session.liveFeedbackMode ? (
-              <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-                <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                  Private Coach
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold">
-                  {input.trim() ? "Current pressure score" : "Last turn score"}
-                </h2>
-
-                {turnFeedback ? (
-                  <div className="mt-5 grid gap-4">
-                    <div className="theme-surface rounded-[1.45rem] border p-4">
-                      <div className="flex flex-wrap items-end justify-between gap-3">
-                        <div>
-                          <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                            Turn score
-                          </p>
-                          <p className="theme-strong mt-2 text-4xl font-semibold">
-                            {turnFeedback.score}
-                            <span className="text-lg">/100</span>
-                          </p>
-                        </div>
-                        <span
-                          className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${
-                            turnFeedback.score >= 84
-                              ? "theme-status-anchor"
-                              : turnFeedback.score >= 68
-                                ? "theme-status-developing"
-                                : "theme-status-collapse"
-                          }`}
-                        >
-                          {turnFeedback.score >= 84
-                            ? "strong"
-                            : turnFeedback.score >= 68
-                              ? "live"
-                              : "fragile"}
-                        </span>
-                      </div>
-                      <p className="theme-copy mt-4 text-sm leading-6">
-                        {turnFeedback.critique}
-                      </p>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        {turnFeedback.breakdown.map((item) => (
-                          <div
-                            key={item.label}
-                            className="theme-subcard rounded-[1.1rem] border p-3"
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="text-sm font-semibold">{item.label}</p>
-                              <span
-                                className={`rounded-full border px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] ${
-                                  item.tone === "accent"
-                                    ? "theme-status-anchor"
-                                    : item.tone === "neutral"
-                                      ? "theme-status-developing"
-                                      : "theme-status-collapse"
-                                }`}
-                              >
-                                {item.score}
-                              </span>
-                            </div>
-                            <p className="theme-copy mt-2 text-xs leading-5">{item.note}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="theme-subcard rounded-[1.35rem] border p-4">
-                      <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                        Line-by-line read
-                      </p>
-                      <div className="mt-3 grid gap-3">
-                        <div className="theme-surface rounded-[1.1rem] border p-3">
-                          <p className="theme-muted text-[0.68rem] uppercase tracking-[0.16em]">
-                            Your line
-                          </p>
-                          <p className="theme-strong mt-2 text-sm leading-6 break-words">
-                            &ldquo;{turnFeedback.userQuote}&rdquo;
-                          </p>
-                        </div>
-                        {turnFeedback.opponentQuote ? (
-                          <div className="theme-surface rounded-[1.1rem] border p-3">
-                            <p className="theme-muted text-[0.68rem] uppercase tracking-[0.16em]">
-                              Line you are answering
-                            </p>
-                            <p className="theme-copy mt-2 text-sm leading-6 break-words">
-                              &ldquo;{turnFeedback.opponentQuote}&rdquo;
-                            </p>
-                          </div>
-                        ) : null}
-                      </div>
-                      <p className="theme-copy mt-4 text-sm leading-6">
-                        {turnFeedback.strongestPart}
-                      </p>
-                      <p className="theme-strong mt-3 text-sm leading-6">
-                        Next fix: {turnFeedback.nextFix}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="theme-surface mt-5 rounded-[1.45rem] border p-4">
-                    <p className="theme-copy text-sm leading-6">
-                      Start typing and Private Coach will score the turn, flag the weakest seam,
-                      and tell you the fastest upgrade before you send it.
-                    </p>
-                  </div>
-                )}
-              </section>
-            ) : null}
-
-            {session.liveFeedbackMode ? (
-              <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-                <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                  Best opening
-                </p>
-                <h2 className="mt-3 text-2xl font-semibold">Where the opponent is softest</h2>
-
-                {attackWindow ? (
-                  <div className="mt-5 grid gap-4">
-                    <div className="theme-surface rounded-[1.45rem] border p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-sm font-semibold">{attackWindow.title}</p>
-                        <span className="theme-status-collapse rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em]">
-                          {attackWindow.label}
-                        </span>
-                      </div>
-                      <div className="theme-subcard mt-4 rounded-[1.1rem] border p-3">
-                        <p className="theme-muted text-[0.68rem] uppercase tracking-[0.16em]">
-                          Target quote
-                        </p>
-                        <p className="theme-strong mt-2 text-sm leading-6 break-words">
-                          &ldquo;{attackWindow.targetQuote}&rdquo;
-                        </p>
-                      </div>
-                      <p className="theme-copy mt-4 text-sm leading-6">
-                        {attackWindow.reason}
-                      </p>
-                    </div>
-
-                    <div className="theme-subcard rounded-[1.35rem] border p-4">
-                      <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                        Best pressure line
-                      </p>
-                      <p className="theme-strong mt-2 text-sm leading-6">
-                        {attackWindow.punch}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="theme-surface mt-5 rounded-[1.45rem] border p-4">
-                    <p className="theme-copy text-sm leading-6">
-                      Once the opponent answers your first actual argument, this panel will point
-                      to the softest seam and give you the cleanest attack line.
-                    </p>
-                  </div>
-                )}
-              </section>
-            ) : null}
-
-            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                    Evidence
-                  </p>
-                  <h2 className="mt-3 text-2xl font-semibold">Pull ammunition fast</h2>
-                </div>
-                <button
-                  type="button"
-                  disabled={evidenceState.status === "loading"}
-                  onClick={() => {
-                    void generateEvidence();
-                  }}
-                  className="theme-button-secondary rounded-full border px-4 py-2 text-sm font-medium transition disabled:opacity-60"
-                >
-                  {evidenceState.status === "loading"
-                    ? "Finding evidence..."
-                    : evidenceState.result
-                      ? "Refresh"
-                      : "Generate"}
-                </button>
-              </div>
-
-              <div className="mt-5 max-h-[34rem] overflow-y-auto pr-1">
-                <EvidenceDeck
-                  result={evidenceState.result}
-                  status={evidenceState.status}
-                  error={evidenceState.status === "error" ? evidenceState.error : null}
-                  emptyCopy="Pull in two stats, two studies, two historical examples, and two named authorities without leaving the round."
-                  onUseCard={insertEvidenceIntoDraft}
-                />
-                {evidenceState.error && evidenceState.status === "ready" ? (
-                  <p className="theme-muted mt-4 text-sm leading-6">{evidenceState.error}</p>
-                ) : null}
-              </div>
-            </section>
-
-            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                Round read
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold">What matters right now</h2>
-              <div className="mt-5 grid gap-3">
-                {roundReadStats.map((stat) => (
-                  <article
-                    key={stat.label}
-                    className="theme-surface rounded-[1.35rem] border p-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                        {stat.label}
-                      </p>
-                      <span
-                        className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${
-                          stat.tone === "accent"
-                            ? "theme-status-anchor"
-                            : stat.tone === "warning"
-                              ? "theme-status-collapse"
-                              : "theme-status-developing"
-                        }`}
-                      >
-                        {stat.value}
-                      </span>
-                    </div>
-                    <p className="theme-copy mt-3 text-sm leading-6">{stat.note}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                    Extra coaching tools
-                  </p>
-                  <h2 className="mt-3 text-2xl font-semibold">
-                    Open more if you need them
-                  </h2>
-                  <p className="theme-copy mt-3 text-sm leading-6">
-                    Keep the room clean by default, then expand the prep tools when you want a
-                    fuller breakdown before sending.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowPrepTools((current) => !current)}
-                  className="theme-button-secondary rounded-full border px-4 py-2 text-sm font-medium transition"
-                >
-                  {showPrepTools ? "Hide tools" : "Show tools"}
-                </button>
-              </div>
-            </section>
-
-            {showPrepTools ? (
-              <>
-                <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                    Before you send
-                  </p>
-                  <h2 className="mt-3 text-2xl font-semibold">Quick draft check</h2>
-                  <div className="mt-5 grid gap-3">
-                    {liveCoach.draftChecks.map((check) => (
-                      <article
-                        key={check.label}
-                        className="theme-surface rounded-[1.35rem] border p-4"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <p className="text-sm font-semibold">{check.label}</p>
-                          <span
-                            className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${
-                              check.ready ? "theme-status-anchor" : "theme-status-collapse"
-                            }`}
-                          >
-                            {check.ready ? "ready" : "missing"}
-                          </span>
-                        </div>
-                        <p className="theme-copy mt-3 text-sm leading-6">{check.note}</p>
-                      </article>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                    Best fixes
-                  </p>
-                  <h2 className="mt-3 text-2xl font-semibold">Highest-value changes</h2>
-                  <div className="mt-5 space-y-3">
-                    {(liveCoach.nudges.length > 0
-                      ? liveCoach.nudges
-                      : [
-                          "Your draft is basically live. Tighten the strongest sentence and send.",
-                        ]
-                    ).map((item) => (
-                      <div
-                        key={item}
-                        className="theme-surface report-list-item rounded-[1.35rem] border p-4"
-                      >
-                        <span className="report-list-dot bg-[var(--accent)]" />
-                        <span className="theme-copy text-sm leading-6">{item}</span>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                    Opponent scout
-                  </p>
-                  <h2 className="mt-3 text-2xl font-semibold">
-                    How {opponentPersonality.label} usually punishes
-                  </h2>
-
-                  <div className="theme-subcard mt-5 rounded-[1.35rem] border p-4">
-                    <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                      Likely cross-ex questions
-                    </p>
-                    <div className="mt-3 space-y-3">
-                      {liveCoach.pressureQuestions.map((item) => (
-                        <div key={item} className="report-list-item">
-                          <span className="report-list-dot bg-rose-400/80" />
-                          <span className="theme-copy text-sm leading-6">{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="theme-subcard mt-4 rounded-[1.35rem] border p-4">
-                    <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                      Habits to pre-empt
-                    </p>
-                    <div className="mt-3 space-y-3">
-                      {liveCoach.pressureHabits.map((item) => (
-                        <div key={item} className="report-list-item">
-                          <span className="report-list-dot bg-emerald-400/80" />
-                          <span className="theme-copy text-sm leading-6">{item}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </section>
-              </>
-            ) : null}
-          </aside>
+    <main className="debate-workspace">
+      <header className="debate-heading">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{session.topic}</h1>
+          <p className="theme-muted mt-2 text-sm">You: {session.userSide} · {opponentPersonality.label} · {replyStyle.label} · {userTurns} turns</p>
         </div>
+        <button type="button" disabled={isRouting || isThinking || userTurns === 0} onClick={openResults}
+          className="theme-button-secondary shrink-0 rounded-lg border px-4 py-2 text-sm disabled:opacity-40">Finish round</button>
+      </header>
+      {initialCoachFocus.trim() && <details className="theme-copy text-sm"><summary className="cursor-pointer">Your replay focus</summary><p className="py-2">{initialCoachFocus}</p></details>}
+      <div className="debate-toolbar" aria-label="Debate tools">
+        {(["coach", "evidence", "prep"] as const).map((tool) => (
+          <button key={tool} type="button" aria-expanded={activeTool === tool} aria-controls="debate-tools"
+            onClick={() => setActiveTool(activeTool === tool ? null : tool)}
+            className={activeTool === tool ? "tool-selected" : ""}>
+            {tool === "coach" ? "Coach" : tool === "evidence" ? "Evidence" : "Draft check"}
+          </button>
+        ))}
+        <span className="theme-muted ml-auto text-xs">{isThinking ? "Opponent replying..." : "Your turn"}</span>
+      </div>
+      <div className={`debate-body ${activeTool ? "with-tools" : ""}`}>
+        <section className="debate-conversation" aria-label="Debate conversation">
+          <div className="debate-transcript" role="log" aria-label="Messages" aria-live="polite">
+            {session.messages.map((message) => (
+              <article key={message.id} className={`debate-message ${message.speaker === "You" ? "from-user" : "from-opponent"}`}>
+                <p className="text-sm font-semibold">{message.speaker === "You" ? "You" : opponentPersonality.label}</p>
+                <FactCheckedMessageText claims={factChecksByMessage[message.id] ?? []} text={message.text} />
+              </article>
+            ))}
+            {isThinking && <p className="theme-muted px-4 py-3 text-sm" role="status">{getOpponentThinkingCopy(session)}</p>}
+            <div ref={transcriptEndRef} />
+          </div>
+          <div className="debate-composer">
+            <label htmlFor="argument" className="sr-only">Your reply</label>
+            <textarea id="argument" rows={3} className="theme-input w-full rounded-lg border p-3 text-base"
+              placeholder={getDebateInputPlaceholder(session.replyStyle)} value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") { event.preventDefault(); void sendMessage(); } }} />
+            <div className="mt-2 flex items-center justify-between gap-3">
+              <span className="theme-muted text-xs">{draftWordCount} words <span className="hidden sm:inline">· Ctrl / Cmd + Enter to send</span></span>
+              <button type="button" disabled={isThinking || !input.trim()} onClick={() => void sendMessage()}
+                className="theme-button-primary rounded-lg px-6 py-2 text-sm font-semibold disabled:opacity-40">{isThinking ? "Waiting..." : "Send"}</button>
+            </div>
+            {session.liveFeedbackMode && turnFeedback && <button type="button" onClick={() => setActiveTool("coach")} className="theme-copy mt-2 text-left text-xs">Coach: {turnFeedback.score}/100 · {turnFeedback.critique}</button>}
+            {error && <p role="alert" className="theme-error mt-2 text-sm">{error}</p>}
+          </div>
+        </section>
+        {activeTool && <aside id="debate-tools" className="debate-tools" aria-label="Debate tools">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-semibold">{activeTool === "coach" ? "Coach notes" : activeTool === "evidence" ? "Evidence" : "Draft check"}</h2>
+            <button type="button" onClick={() => setActiveTool(null)} className="theme-muted text-sm">Close</button>
+          </div>
+          {activeTool === "coach" && <>
+            {turnFeedback ? <>
+              <p className="text-3xl font-semibold">{turnFeedback.score}<span className="theme-muted text-sm"> / 100</span></p>
+              <p className="theme-copy mt-3 text-sm leading-6">{turnFeedback.critique}</p>
+              <details className="mt-4"><summary className="cursor-pointer text-sm">Score details</summary>
+                {turnFeedback.breakdown.map((item) => <p key={item.label} className="theme-copy mt-3 text-sm"><strong>{item.label} {item.score}</strong><br />{item.note}</p>)}
+              </details>
+            </> : <p className="theme-muted text-sm">Write your opening argument to get feedback.</p>}
+            {attackWindow && <div className="mt-6 border-t border-[var(--border)] pt-4">
+              <h3 className="text-sm font-semibold">Where to respond</h3>
+              <blockquote className="theme-muted mt-3 text-sm leading-6">{attackWindow.targetQuote}</blockquote>
+              <p className="theme-copy mt-3 text-sm leading-6">{attackWindow.punch}</p>
+            </div>}
+          </>}
+          {activeTool === "evidence" && <>
+            <button type="button" disabled={evidenceState.status === "loading"} onClick={() => void generateEvidence()}
+              className="theme-button-secondary mb-4 rounded-lg border px-4 py-2 text-sm disabled:opacity-40">{evidenceState.status === "loading" ? "Finding evidence..." : evidenceState.result ? "Refresh evidence" : "Generate evidence"}</button>
+            <EvidenceDeck result={evidenceState.result} status={evidenceState.status} error={evidenceState.error}
+              emptyCopy="Find sources and examples for your side. Add any useful item straight to your reply." onUseCard={insertEvidenceIntoDraft} />
+          </>}
+          {activeTool === "prep" && <>
+            {liveCoach.draftChecks.map((check) => <div key={check.label} className="mb-4">
+              <p className="text-sm font-semibold">{check.label}<span className="theme-muted ml-2 font-normal">{check.ready ? "Present" : "Worth adding"}</span></p>
+              <p className="theme-copy mt-1 text-sm leading-6">{check.note}</p>
+            </div>)}
+            <details className="mt-5"><summary className="cursor-pointer text-sm">Round statistics</summary>
+              {roundReadStats.map((stat) => <p key={stat.label} className="theme-copy mt-3 text-sm">{stat.label}: {stat.value}<br />{stat.note}</p>)}
+            </details>
+          </>}
+        </aside>}
       </div>
     </main>
   );

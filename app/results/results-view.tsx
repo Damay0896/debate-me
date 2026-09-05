@@ -8,7 +8,6 @@ import {
   useState,
   useSyncExternalStore,
   useTransition,
-  type CSSProperties,
 } from "react";
 
 import {
@@ -83,42 +82,6 @@ function useIsClient() {
 
 function getTopMetric(metrics: DebateMetric[]) {
   return [...metrics].sort((left, right) => right.score - left.score)[0] ?? null;
-}
-
-function getBottomMetric(metrics: DebateMetric[]) {
-  return [...metrics].sort((left, right) => left.score - right.score)[0] ?? null;
-}
-
-function describeConfidence(confidence: number) {
-  if (confidence >= 82) {
-    return "Coach is very confident in this call.";
-  }
-
-  if (confidence >= 70) {
-    return "Coach sees a real edge, but not a blowout.";
-  }
-
-  return "Coach sees this as close enough to swing next time.";
-}
-
-function describeMetricTier(score: number) {
-  if (score >= 78) {
-    return "Elite";
-  }
-
-  if (score >= 66) {
-    return "Strong";
-  }
-
-  if (score >= 52) {
-    return "Live";
-  }
-
-  if (score >= 38) {
-    return "Fragile";
-  }
-
-  return "Critical";
 }
 
 function cleanReplayFocus(value: string) {
@@ -289,13 +252,6 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   const transcriptPreview = session.messages.slice(-6);
   const opponentPersonality = getOpponentPersonalityMeta(session.opponentPersonality);
   const replyStyle = getReplyStyleMeta(session.replyStyle);
-  const reportLabel = isLoading
-    ? "Refreshing with deeper coaching"
-    : analysisSource === "openrouter"
-      ? "Private coach + instant scoring"
-      : storedAnalysisRecord
-        ? "Saved coaching report"
-        : "Instant scoring report";
   const activeSession = session;
   const winnerLabel =
     report.winner === "You"
@@ -305,14 +261,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
         : "Tie";
   const resultBanner =
     report.result === "win" ? "WIN" : report.result === "loss" ? "LOSS" : "TIE";
-  const resultBannerClass =
-    report.result === "win"
-      ? "theme-status-anchor"
-      : report.result === "loss"
-        ? "theme-status-collapse"
-        : "theme-status-developing";
   const topMetric = getTopMetric(report.metrics);
-  const bottomMetric = getBottomMetric(report.metrics);
   const replayFocus = cleanReplayFocus(report.replayFocus);
   const reportInsights = buildReportInsights(session, report);
   const hasTranscriptArchive = reportInsights.hasTranscriptArchive;
@@ -329,10 +278,6 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   const topSkillValue = topMetric
     ? `${topMetric.label} ${topMetric.score}`
     : "Still forming";
-  const visibleHighlights = report.highlights.slice(0, 2);
-  const confidenceRingStyle = {
-    "--score": `${report.score}%`,
-  } as CSSProperties;
   const heuristicEvidence = buildHeuristicEvidence({
     topic: activeSession.topic,
     userSide: activeSession.userSide,
@@ -472,319 +417,45 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
   }
 
   return (
-    <main className="report-shell relative min-h-screen overflow-hidden px-6 py-8 sm:px-8">
-
-
-      <div className="mx-auto flex max-w-6xl flex-col gap-6">
-        <header className="theme-card report-rise rounded-[2.2rem] border p-6 backdrop-blur md:p-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-            <div className="max-w-3xl">
-              <p className="theme-kicker text-sm uppercase tracking-[0.35em]">
-                Counterpoint Report
-              </p>
-              <h1 className="mt-3 text-4xl font-semibold text-balance md:text-5xl">
-                {session.topic}
-              </h1>
-              <p className="theme-copy mt-4 text-base leading-7 md:text-lg md:leading-8">
-                You argued the {session.userSide.toLowerCase()} side against the{" "}
-                {session.opponentSide.toLowerCase()} side with {opponentPersonality.label} in{" "}
-                {replyStyle.label} mode.
-              </p>
-
-            </div>
-
-            <div className="report-action-stack flex w-full flex-col gap-3 md:w-[18rem] md:flex-none">
-              <button
-                type="button"
-                disabled={isRouting}
-                onClick={replayDebateBetter}
-                className="theme-button-primary inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
-              >
-                Run it back with this fix
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowFullBreakdown((current) => !current)}
-                className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
-              >
-                {showFullBreakdown ? "Hide full breakdown" : "Show full breakdown"}
-              </button>
-              <button
-                type="button"
-                onClick={exportFeedbackPdf}
-                className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition"
-              >
-                Export PDF
-              </button>
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-1">
-                <button
-                  type="button"
-                  disabled={isRouting}
-                  onClick={continueDebate}
-                  className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition disabled:opacity-60"
-                >
-                  Re-open round
-                </button>
-                <Link
-                  href="/"
-                  className="theme-button-secondary inline-flex w-full items-center justify-center rounded-full border px-5 py-3 text-sm font-medium transition"
-                >
-                  New challenge
-                </Link>
-              </div>
-            </div>
+    <main className="report-shell report-editorial px-5 py-8 sm:px-8">
+      <div className="mx-auto flex max-w-4xl flex-col gap-6">
+        <header>
+          <p className="theme-muted text-sm">Round report</p>
+          <h1 className="mt-2 text-2xl font-semibold leading-snug sm:text-3xl">{session.topic}</h1>
+          <p className="theme-muted mt-2 text-sm">{session.userSide} against {opponentPersonality.label} · {replyStyle.label}</p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button type="button" disabled={isRouting} onClick={replayDebateBetter} className="theme-button-primary rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-40">Run it back with this fix</button>
+            <button type="button" onClick={exportFeedbackPdf} className="theme-button-secondary rounded-lg border px-4 py-2 text-sm">Export PDF</button>
+            <button type="button" disabled={isRouting} onClick={continueDebate} className="theme-muted px-2 py-2 text-sm">Resume round</button>
+            <Link href="/" className="theme-muted px-2 py-2 text-sm">New topic</Link>
           </div>
         </header>
-
-        <section
-          id="verdict"
-          className="scroll-mt-28 grid gap-6"
-        >
-          <section className="theme-panel report-hero relative overflow-hidden rounded-[2.35rem] border p-6 md:p-8">
-            <div className="report-hero-glow absolute inset-x-0 top-0 h-44 opacity-80" />
-            <div className="relative grid gap-8 lg:grid-cols-[1fr_16rem]">
-              <div>
-                <p className="theme-muted text-sm uppercase tracking-[0.3em]">
-                  Verdict
-                </p>
-                <div className="mt-5 flex flex-wrap items-end gap-4">
-                  <span
-                    className={`rounded-full border px-4 py-2 text-sm font-semibold uppercase tracking-[0.28em] ${resultBannerClass}`}
-                  >
-                    {resultBanner}
-                  </span>
-                  <div>
-                    <p className="theme-muted text-sm uppercase tracking-[0.18em]">
-                      Winner: {winnerLabel} ({report.winnerConfidence}%)
-                    </p>
-                    <h2 className="mt-2 text-4xl font-semibold md:text-5xl">
-                      {report.verdict}
-                    </h2>
-                  </div>
-                </div>
-
-                <p className="theme-copy mt-6 max-w-3xl text-base leading-7 md:text-[1.05rem]">
-                  {report.winnerReasoning}
-                </p>
-
-                <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  <div className="theme-surface rounded-3xl border p-4">
-                    <p className="theme-muted text-sm uppercase tracking-[0.22em]">
-                      {turnStatLabel}
-                    </p>
-                    <p className="mt-3 text-3xl font-semibold">{turnStatValue}</p>
-                  </div>
-                  <div className="theme-surface rounded-3xl border p-4">
-                    <p className="theme-muted text-sm uppercase tracking-[0.22em]">
-                      {wordStatLabel}
-                    </p>
-                    <p className="mt-3 text-3xl font-semibold">{wordStatValue}</p>
-                  </div>
-                  <div className="theme-surface rounded-3xl border p-4">
-                    <p className="theme-muted text-sm uppercase tracking-[0.22em]">
-                      Best edge
-                    </p>
-                    <p className="mt-3 text-3xl font-semibold">{topSkillValue}</p>
-                  </div>
-                </div>
-
-                {!hasTranscriptArchive ? (
-                  <p className="theme-muted mt-4 text-sm leading-6">
-                    This saved round still has the full coaching analysis, but the
-                    original turn-by-turn transcript archive was not preserved.
-                  </p>
-                ) : null}
-
-                {showFullBreakdown && (
-                <div className="theme-subcard report-brief-card mt-6 rounded-[1.55rem] border p-4">
-                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                    Pressure read
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-3 text-sm">
-                    {topMetric ? (
-                      <span className="theme-pill rounded-full border px-4 py-2">
-                        Top skill: {topMetric.label} ({topMetric.score})
-                      </span>
-                    ) : null}
-                    {bottomMetric ? (
-                      <span className="theme-pill rounded-full border px-4 py-2">
-                        Main leak: {bottomMetric.label} ({bottomMetric.score})
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="theme-copy mt-3 text-sm leading-6">
-                    {reportLabel}. {describeConfidence(report.winnerConfidence)}
-                  </p>
-                </div>
-                )}
-
-                {error ? <p className="theme-error mt-5 text-sm">{error}</p> : null}
-                {isLoading ? (
-                  <p className="theme-muted mt-5 text-sm">
-                    Refreshing the report with deeper coaching...
-                  </p>
-                ) : null}
-              </div>
-
-              <aside className="flex flex-col gap-4">
-                <div className="report-score-ring mx-auto w-full max-w-[15rem]" style={confidenceRingStyle}>
-                  <div className="report-score-ring-inner">
-                    <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                      Pressure score
-                    </p>
-                    <p className="mt-3 text-5xl font-semibold">
-                      {report.score}
-                      <span className="text-2xl">/100</span>
-                    </p>
-                    <p className="theme-copy mt-3 text-sm leading-6">
-                      Confidence: {report.winnerConfidence}%.
-                    </p>
-                  </div>
-                </div>
-
-                {showFullBreakdown && <>
-                <div className="theme-surface rounded-[1.5rem] border p-4">
-                  <p className="theme-muted text-xs uppercase tracking-[0.24em]">
-                    Best edge
-                  </p>
-                  <p className="mt-3 text-xl font-semibold">
-                    {topMetric ? topMetric.label : "Still forming"}
-                  </p>
-                  <p className="theme-copy mt-2 text-sm leading-6">
-                    {topMetric
-                      ? `${describeMetricTier(topMetric.score)} enough to give the judge a cleaner route to your ballot.`
-                      : "The biggest advantage in the round is still too close to call."}
-                  </p>
-                </div>
-
-                <div className="theme-surface rounded-[1.5rem] border p-4">
-                  <p className="theme-muted text-xs uppercase tracking-[0.24em]">
-                    Logic damage
-                  </p>
-                  <p className="theme-strong mt-3 text-sm leading-6">
-                    {bottomMetric
-                      ? `${bottomMetric.label} (${bottomMetric.score})`
-                      : "The main leak is still too close to call."}
-                  </p>
-                </div>
-                </>}
-              </aside>
-            </div>
-          </section>
-
-          {showFullBreakdown && (
-          <section className="theme-card report-rise rounded-[2.2rem] border p-6 backdrop-blur md:p-7">
-            <p className="theme-muted text-xs uppercase tracking-[0.32em]">
-              Case cracked
-            </p>
-            <h2 className="mt-3 text-2xl font-semibold md:text-[2rem]">
-              What decided it
-            </h2>
-            <p className="theme-copy mt-4 text-base leading-7">{report.summary}</p>
-
-            <div className="mt-6 space-y-3">
-              {visibleHighlights.map((item, index) => (
-                <div
-                  key={item}
-                  className="report-highlight-row theme-surface rounded-[1.35rem] border px-4 py-4"
-                >
-                  <div className="theme-accent-chip flex h-8 w-8 items-center justify-center rounded-full border text-xs font-semibold">
-                    {index + 1}
-                  </div>
-                  <p className="theme-strong text-sm leading-6">{item}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="theme-subcard rounded-[1.35rem] border p-4">
-                <p className="theme-muted text-xs uppercase tracking-[0.24em]">
-                  Best skill
-                </p>
-                <p className="mt-2 text-lg font-semibold">
-                  {topMetric ? `${topMetric.label} (${topMetric.score})` : "Still forming"}
-                </p>
-              </div>
-              <div className="theme-subcard rounded-[1.35rem] border p-4">
-                <p className="theme-muted text-xs uppercase tracking-[0.24em]">
-                  Weakest skill
-                </p>
-                <p className="mt-2 text-lg font-semibold">
-                  {bottomMetric
-                    ? `${bottomMetric.label} (${bottomMetric.score})`
-                    : "Still forming"}
-                </p>
-              </div>
-            </div>
-          </section>          )}
-
-        </section>
-
-        <section
-          id="snapshot"
-          className="scroll-mt-28 grid gap-4 xl:grid-cols-[1.02fr_0.9fr_0.98fr] xl:items-start"
-        >
-          <section className="theme-card report-rise report-feature-card rounded-[2rem] border p-6 backdrop-blur">
-            <p className="theme-muted text-xs uppercase tracking-[0.3em]">
-              What actually landed
-            </p>
-            <blockquote className="report-quote mt-6 rounded-[1.7rem] border px-5 py-5 text-lg leading-8">
-              {report.strongestArgument}
-            </blockquote>
-          </section>
-
-          <section className="theme-card report-rise rounded-[1.8rem] border p-5 backdrop-blur">
-            <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-              Where it cracked
-            </p>
-            <p className="theme-strong mt-4 text-base leading-7">
-              {report.biggestUserMistake}
-            </p>
-            <p className="theme-copy mt-4 text-sm leading-6">
-              Biggest missed opening on the other side: {report.biggestOpponentMistake}
-            </p>
-          </section>
-
-          <section className="theme-panel report-rise rounded-[2rem] border p-6">
-            <p className="theme-muted text-xs uppercase tracking-[0.3em]">
-              Round-winning fix
-            </p>
-            <p className="theme-strong mt-5 text-lg leading-8">{report.flipSentence}</p>
-
-
-          </section>
-        </section>
-
-        {showFullBreakdown && (
-        <section className="theme-card report-rise rounded-[1.9rem] border p-5 backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                Best next improvement
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold">
-                {report.bestNextImprovement.title}
-              </h2>
-              <p className="theme-copy mt-3 text-sm leading-6">
-                {report.bestNextImprovement.reason}
-              </p>
-              <p className="theme-strong mt-3 text-sm leading-6">
-                Drill: {report.bestNextImprovement.drill}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowFullBreakdown((current) => !current)}
-              className="theme-button-secondary inline-flex rounded-full border px-5 py-3 text-sm font-medium transition"
-            >
-              {showFullBreakdown ? "Hide full breakdown" : "Show full breakdown"}
-            </button>
+        <section className="report-verdict-line">
+          <div>
+            <p className="text-6xl font-semibold tracking-tight">{report.score}<span className="theme-muted text-xl font-normal"> / 100</span></p>
+            <p className="theme-muted mt-2 text-xs">Pressure score</p>
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-semibold">{resultBanner} <span className="theme-muted text-sm font-normal">· {winnerLabel} · {report.winnerConfidence}% confidence</span></p>
+            <p className="theme-copy mt-3 text-sm leading-7">{report.winnerReasoning}</p>
           </div>
         </section>
-
-        )}
+        <div className="theme-muted flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          <span>{turnStatValue} {turnStatLabel.toLowerCase()}</span>
+          <span>{wordStatValue} {wordStatLabel.toLowerCase()}</span>
+          <span>Best skill: {topSkillValue}</span>
+        </div>
+        {isLoading && <p role="status" className="theme-muted text-sm">Updating analysis...</p>}
+        {error && <p role="alert" className="theme-error text-sm">{error}</p>}
+        <section className="report-takeaways" aria-label="Key findings">
+          <article><h2>What landed</h2><p>{report.strongestArgument}</p></article>
+          <article><h2>What cost you</h2><p>{report.biggestUserMistake}</p></article>
+          <article className="report-main-fix"><h2>Your next move</h2><p>{report.flipSentence}</p></article>
+        </section>
+        <button type="button" aria-expanded={showFullBreakdown} aria-controls="full-report" onClick={() => setShowFullBreakdown((current) => !current)}
+          className="theme-button-secondary rounded-lg border px-4 py-3 text-left text-sm">{showFullBreakdown ? "Hide full breakdown" : "Explore full breakdown"} <span className="theme-muted ml-2">Skills, evidence, strategy & transcript</span></button>
         {showFullBreakdown ? (
-          <>
+          <div id="full-report">
             <section className="theme-card report-rise rounded-[2rem] border p-5 backdrop-blur">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="max-w-3xl">
@@ -941,7 +612,7 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
                 </div>
               )}
             </section>
-          </>
+          </div>
         ) : null}
       </div>
     </main>
