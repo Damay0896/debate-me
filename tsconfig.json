@@ -38,6 +38,8 @@
     ".next-local/dev/types/**/*.ts",
     ".next-run-*/types/**/*.ts",
     ".next-run-*/dev/types/**/*.ts",
+    ".next-build-*/types/**/*.ts",
+    ".next-build-*/dev/types/**/*.ts",
     "**/*.mts",
     "dist/types/**/*.ts",
     "dist/dev/types/**/*.ts"

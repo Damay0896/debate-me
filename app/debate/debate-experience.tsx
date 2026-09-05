@@ -876,6 +876,7 @@ export default function DebateExperience({
     result: null,
     status: "idle",
   });
+  const [showPrepTools, setShowPrepTools] = useState(false);
   const [isRouting, startTransition] = useTransition();
   const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -950,6 +951,7 @@ export default function DebateExperience({
   const opponentPersonality = getOpponentPersonalityMeta(session.opponentPersonality);
   const replyStyle = getReplyStyleMeta(session.replyStyle);
   const liveCoach = buildLiveCoach(session, input, opponentPersonality);
+  const roundReadStats = liveCoach.stats.slice(0, 3);
   const draftWordCount = countWords(input);
   const feedbackSourceText = input.trim() ? input : latestUserTurn;
   const feedbackOpponentText = input.trim() ? latestOpponentTurn : latestUserContext.opponentText;
@@ -1035,15 +1037,14 @@ export default function DebateExperience({
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <p className="theme-kicker text-sm uppercase tracking-[0.35em]">
-                Live Debate Room
+                Live room
               </p>
               <h1 className="mt-3 text-4xl font-semibold text-balance">
                 {session.topic}
               </h1>
               <p className="theme-copy mt-3 max-w-3xl text-base leading-7">
-                {opponentPersonality.label}-inspired mode is active, so the opponent
-                will pressure you with{" "}
-                {opponentPersonality.description.toLowerCase()}. Replies are set to{" "}
+                {opponentPersonality.label} is active, so expect pressure that sounds like{" "}
+                {opponentPersonality.description.toLowerCase()} Replies are set to{" "}
                 {replyStyle.label.toLowerCase()}.
               </p>
               <div className="theme-copy mt-4 flex flex-wrap gap-3 text-sm">
@@ -1073,7 +1074,7 @@ export default function DebateExperience({
                 href="/"
                 className="theme-button-secondary rounded-full border px-5 py-3 text-sm font-medium transition"
               >
-                Back to lobby
+                New room
               </Link>
               <button
                 type="button"
@@ -1081,7 +1082,7 @@ export default function DebateExperience({
                 onClick={openResults}
                 className="theme-button-primary rounded-full px-5 py-3 text-sm font-semibold transition disabled:opacity-60"
               >
-                View results
+                See report
               </button>
             </div>
           </div>
@@ -1104,11 +1105,11 @@ export default function DebateExperience({
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="theme-muted text-xs uppercase tracking-[0.24em]">
-                  Transcript + Light Fact Check
+                  Live round + light fact check
                 </p>
                 <p className="theme-copy mt-2 text-sm leading-6">
-                  Claim markers stay small on purpose: they flag which factual lines look solid,
-                  which need proof, and which sound overstated.
+                  Claim markers stay subtle: they flag which factual lines look solid, which need
+                  proof, and which sound overstated.
                 </p>
               </div>
               <span className="theme-pill rounded-full border px-4 py-2 text-sm">
@@ -1148,7 +1149,7 @@ export default function DebateExperience({
               {isThinking && (
                 <article className="theme-chat-opponent mb-4 mr-auto max-w-3xl rounded-[1.6rem] border p-5">
                   <p className="theme-muted text-xs font-medium uppercase tracking-[0.28em]">
-                    AI Opponent
+                    Opponent
                   </p>
                   <p className="theme-strong mt-3 text-base leading-7">
                     {getOpponentThinkingCopy(session)}
@@ -1166,12 +1167,12 @@ export default function DebateExperience({
                     htmlFor="argument"
                     className="theme-copy mb-3 block text-sm font-medium"
                   >
-                    Your next argument
+                    Your next shot
                   </label>
                   <p className="theme-muted text-sm">
                     {session.liveFeedbackMode
                       ? "Private Coach is scoring this turn live."
-                      : `Momentum read: ${liveCoach.momentumRead}`}
+                      : `Round read: ${liveCoach.momentumRead}`}
                   </p>
                 </div>
                 <span className="theme-pill rounded-full border px-4 py-2 text-sm">
@@ -1196,7 +1197,7 @@ export default function DebateExperience({
 
               <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <p className="theme-muted text-sm">
-                  Tip: use Ctrl/Cmd + Enter to send a turn.
+                  Tip: answer one thing cleanly. Use Ctrl/Cmd + Enter to send.
                 </p>
 
                 <div className="flex flex-wrap gap-3">
@@ -1233,7 +1234,7 @@ export default function DebateExperience({
                     }}
                     className="theme-button-primary rounded-full px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isThinking ? "Opponent thinking..." : "Send argument"}
+                    {isThinking ? "Opponent thinking..." : "Send turn"}
                   </button>
                 </div>
               </div>
@@ -1249,7 +1250,7 @@ export default function DebateExperience({
                   Private Coach
                 </p>
                 <h2 className="mt-3 text-2xl font-semibold">
-                  {input.trim() ? "Current draft score" : "Last turn score"}
+                  {input.trim() ? "Current pressure score" : "Last turn score"}
                 </h2>
 
                 {turnFeedback ? (
@@ -1356,7 +1357,7 @@ export default function DebateExperience({
             {session.liveFeedbackMode ? (
               <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
                 <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                  Hardest Hit
+                  Best opening
                 </p>
                 <h2 className="mt-3 text-2xl font-semibold">Where the opponent is softest</h2>
 
@@ -1406,9 +1407,9 @@ export default function DebateExperience({
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                    Research Desk
+                    Evidence
                   </p>
-                  <h2 className="mt-3 text-2xl font-semibold">Generate evidence</h2>
+                  <h2 className="mt-3 text-2xl font-semibold">Pull ammunition fast</h2>
                 </div>
                 <button
                   type="button"
@@ -1442,11 +1443,11 @@ export default function DebateExperience({
 
             <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
               <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                Live coach
+                Round read
               </p>
-              <h2 className="mt-3 text-2xl font-semibold">Round pressure dashboard</h2>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                {liveCoach.stats.map((stat) => (
+              <h2 className="mt-3 text-2xl font-semibold">What matters right now</h2>
+              <div className="mt-5 grid gap-3">
+                {roundReadStats.map((stat) => (
                   <article
                     key={stat.label}
                     className="theme-surface rounded-[1.35rem] border p-4"
@@ -1474,91 +1475,119 @@ export default function DebateExperience({
             </section>
 
             <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                Draft builder
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold">Before you hit send</h2>
-              <div className="mt-5 grid gap-3">
-                {liveCoach.draftChecks.map((check) => (
-                  <article
-                    key={check.label}
-                    className="theme-surface rounded-[1.35rem] border p-4"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-sm font-semibold">{check.label}</p>
-                      <span
-                        className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${
-                          check.ready ? "theme-status-anchor" : "theme-status-collapse"
-                        }`}
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                    Extra coaching tools
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold">
+                    Open more if you need them
+                  </h2>
+                  <p className="theme-copy mt-3 text-sm leading-6">
+                    Keep the room clean by default, then expand the prep tools when you want a
+                    fuller breakdown before sending.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPrepTools((current) => !current)}
+                  className="theme-button-secondary rounded-full border px-4 py-2 text-sm font-medium transition"
+                >
+                  {showPrepTools ? "Hide tools" : "Show tools"}
+                </button>
+              </div>
+            </section>
+
+            {showPrepTools ? (
+              <>
+                <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                    Before you send
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold">Quick draft check</h2>
+                  <div className="mt-5 grid gap-3">
+                    {liveCoach.draftChecks.map((check) => (
+                      <article
+                        key={check.label}
+                        className="theme-surface rounded-[1.35rem] border p-4"
                       >
-                        {check.ready ? "ready" : "missing"}
-                      </span>
-                    </div>
-                    <p className="theme-copy mt-3 text-sm leading-6">{check.note}</p>
-                  </article>
-                ))}
-              </div>
-            </section>
-
-            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                Coach nudges
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold">Highest-value fixes right now</h2>
-              <div className="mt-5 space-y-3">
-                {(liveCoach.nudges.length > 0
-                  ? liveCoach.nudges
-                  : [
-                      "Your draft has the core pieces. Tighten the strongest sentence and send with confidence.",
-                    ]
-                ).map((item) => (
-                  <div
-                    key={item}
-                    className="theme-surface report-list-item rounded-[1.35rem] border p-4"
-                  >
-                    <span className="report-list-dot bg-[var(--accent)]" />
-                    <span className="theme-copy text-sm leading-6">{item}</span>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <p className="text-sm font-semibold">{check.label}</p>
+                          <span
+                            className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${
+                              check.ready ? "theme-status-anchor" : "theme-status-collapse"
+                            }`}
+                          >
+                            {check.ready ? "ready" : "missing"}
+                          </span>
+                        </div>
+                        <p className="theme-copy mt-3 text-sm leading-6">{check.note}</p>
+                      </article>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </section>
+                </section>
 
-            <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
-              <p className="theme-muted text-xs uppercase tracking-[0.28em]">
-                Opponent scout
-              </p>
-              <h2 className="mt-3 text-2xl font-semibold">
-                How {opponentPersonality.label} usually punishes
-              </h2>
+                <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                    Best fixes
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold">Highest-value changes</h2>
+                  <div className="mt-5 space-y-3">
+                    {(liveCoach.nudges.length > 0
+                      ? liveCoach.nudges
+                      : [
+                          "Your draft is basically live. Tighten the strongest sentence and send.",
+                        ]
+                    ).map((item) => (
+                      <div
+                        key={item}
+                        className="theme-surface report-list-item rounded-[1.35rem] border p-4"
+                      >
+                        <span className="report-list-dot bg-[var(--accent)]" />
+                        <span className="theme-copy text-sm leading-6">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
 
-              <div className="theme-subcard mt-5 rounded-[1.35rem] border p-4">
-                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                  Likely cross-ex questions
-                </p>
-                <div className="mt-3 space-y-3">
-                  {liveCoach.pressureQuestions.map((item) => (
-                    <div key={item} className="report-list-item">
-                      <span className="report-list-dot bg-rose-400/80" />
-                      <span className="theme-copy text-sm leading-6">{item}</span>
+                <section className="theme-card rounded-[1.8rem] border p-5 backdrop-blur">
+                  <p className="theme-muted text-xs uppercase tracking-[0.28em]">
+                    Opponent scout
+                  </p>
+                  <h2 className="mt-3 text-2xl font-semibold">
+                    How {opponentPersonality.label} usually punishes
+                  </h2>
+
+                  <div className="theme-subcard mt-5 rounded-[1.35rem] border p-4">
+                    <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                      Likely cross-ex questions
+                    </p>
+                    <div className="mt-3 space-y-3">
+                      {liveCoach.pressureQuestions.map((item) => (
+                        <div key={item} className="report-list-item">
+                          <span className="report-list-dot bg-rose-400/80" />
+                          <span className="theme-copy text-sm leading-6">{item}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              <div className="theme-subcard mt-4 rounded-[1.35rem] border p-4">
-                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                  Habits to pre-empt
-                </p>
-                <div className="mt-3 space-y-3">
-                  {liveCoach.pressureHabits.map((item) => (
-                    <div key={item} className="report-list-item">
-                      <span className="report-list-dot bg-emerald-400/80" />
-                      <span className="theme-copy text-sm leading-6">{item}</span>
+                  <div className="theme-subcard mt-4 rounded-[1.35rem] border p-4">
+                    <p className="theme-muted text-xs uppercase tracking-[0.22em]">
+                      Habits to pre-empt
+                    </p>
+                    <div className="mt-3 space-y-3">
+                      {liveCoach.pressureHabits.map((item) => (
+                        <div key={item} className="report-list-item">
+                          <span className="report-list-dot bg-emerald-400/80" />
+                          <span className="theme-copy text-sm leading-6">{item}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            </section>
+                  </div>
+                </section>
+              </>
+            ) : null}
           </aside>
         </div>
       </div>

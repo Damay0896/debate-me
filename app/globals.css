@@ -205,6 +205,7 @@ svg text {
 .theme-surface {
   background: var(--surface-soft);
   border-color: var(--border);
+  min-width: 0;
 }
 
 .theme-surface-strong {
@@ -215,18 +216,24 @@ svg text {
 .theme-subcard {
   background: var(--card-soft);
   border-color: var(--border);
+  min-width: 0;
 }
 
 .theme-pill {
   background: var(--surface-soft);
   border-color: var(--border);
   color: var(--foreground-soft);
+  max-width: 100%;
+  text-align: center;
+  white-space: normal;
 }
 
 .theme-button-secondary {
   background: var(--surface-soft);
   border-color: var(--border);
   color: var(--foreground);
+  text-align: center;
+  white-space: normal;
 }
 
 .theme-button-secondary:hover {
@@ -238,6 +245,8 @@ svg text {
   background: var(--accent-surface);
   box-shadow: 0 16px 40px var(--accent-shadow);
   color: var(--accent-ink);
+  text-align: center;
+  white-space: normal;
 }
 
 .theme-button-primary:hover {
@@ -288,11 +297,15 @@ svg text {
 .theme-chat-opponent {
   background: var(--surface-strong);
   border-color: var(--border);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .theme-chat-user {
   background: var(--user-message);
   border-color: var(--accent-border);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .theme-error {
@@ -692,15 +705,19 @@ html[data-theme="light"] .theme-accent-chip {
   align-items: center;
   justify-content: center;
   min-height: 3rem;
+  width: 100%;
   border: 1px solid var(--border);
   border-radius: 9999px;
-  padding: 0 1rem;
+  padding: 0.75rem 1rem;
   background: color-mix(in srgb, var(--surface-soft) 90%, transparent);
   color: var(--foreground-soft);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.18em;
+  line-height: 1.45;
+  text-align: center;
   text-transform: uppercase;
+  white-space: normal;
 }
 
 .report-map-board {
@@ -724,15 +741,19 @@ html[data-theme="light"] .theme-accent-chip {
   align-items: center;
   justify-content: center;
   min-height: 3rem;
+  width: 100%;
   border: 1px solid var(--border);
   border-radius: 9999px;
-  padding: 0 1rem;
+  padding: 0.75rem 1rem;
   background: color-mix(in srgb, var(--surface-soft) 90%, transparent);
   color: var(--foreground-soft);
   font-size: 0.68rem;
   font-weight: 700;
   letter-spacing: 0.18em;
+  line-height: 1.45;
+  text-align: center;
   text-transform: uppercase;
+  white-space: normal;
 }
 
 @media (min-width: 1280px) {
@@ -883,7 +904,43 @@ html[data-theme="light"] .theme-accent-chip {
 }
 
 .report-rise:hover {
-  box-shadow: 0 30px 88px var(--shadow-strong);
+  box-shadow: none;
+}
+
+/* Keep the interface quiet so the argument remains the focus. */
+.theme-card, .theme-panel, .theme-surface, .theme-subcard {
+  border-radius: 12px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.report-shell .report-rise, .report-shell .report-hero {
+  animation: none;
+  transform: none;
+}
+
+.report-hero-glow, .report-page-glow, .report-page-grid {
+  display: none;
+}
+
+.report-shell .report-hero, .report-shell .report-feature-card {
+  background-image: none;
+}
+
+.report-shell .theme-muted.uppercase,
+.report-shell .theme-kicker {
+  letter-spacing: 0.08em;
+}
+
+.report-shell .report-score-ring {
+  background: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+.report-shell .report-score-ring-inner {
+  border-radius: 12px;
+  box-shadow: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

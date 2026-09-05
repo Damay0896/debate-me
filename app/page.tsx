@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import {
   DEFAULT_OPPONENT_PERSONALITY,
@@ -26,13 +26,6 @@ import {
   loadAnalysisRecord,
   listStoredSessions,
 } from "@/lib/debate-storage";
-import { HOW_IT_WORKS_STEPS, ORIGIN_NOTES, SAMPLE_TESTIMONIALS } from "@/lib/site-content";
-
-const sideCopy: Record<SideChoice, string> = {
-  Pro: "You'll defend the statement.",
-  Con: "You'll challenge the statement.",
-  Random: "We will assign your side at launch.",
-};
 
 type RecentRound = {
   active: boolean;
@@ -48,29 +41,6 @@ type RecentRound = {
   mode: string;
   persona: string;
 };
-
-const EXPLORE_PAGES = [
-  {
-    href: "/about",
-    label: "About",
-    description: "What the app is for, who it helps, and what it actually trains.",
-  },
-  {
-    href: "/why-we-built-this",
-    label: "Why We Built This",
-    description: "The origin story, the frustrations, and the design bets behind the app.",
-  },
-  {
-    href: "/how-it-works",
-    label: "How It Works",
-    description: "A clean walkthrough of the room setup, live clash, and premium report flow.",
-  },
-  {
-    href: "/testimonials",
-    label: "Testimonials",
-    description: "Praise, product love, and quick social-proof flavor for the product.",
-  },
-] as const;
 
 function formatRelativeTime(value: string) {
   const then = new Date(value).getTime();
@@ -104,32 +74,8 @@ export default function Home() {
     useState<OpponentPersonality>(DEFAULT_OPPONENT_PERSONALITY);
   const [replyStyle, setReplyStyle] = useState<ReplyStyle>(DEFAULT_REPLY_STYLE);
   const [liveFeedbackMode, setLiveFeedbackMode] = useState(false);
-  const [personalityQuery, setPersonalityQuery] = useState("");
   const [recentRounds, setRecentRounds] = useState<RecentRound[]>([]);
   const [isPending, startTransition] = useTransition();
-  const selectedPersonalityMeta = useMemo(
-    () => getOpponentPersonalityMeta(opponentPersonality),
-    [opponentPersonality],
-  );
-  const selectedReplyStyleMeta = useMemo(
-    () => getReplyStyleMeta(replyStyle),
-    [replyStyle],
-  );
-
-  const normalizedPersonalityQuery = personalityQuery.trim().toLowerCase();
-  const visiblePersonalityGroups = OPPONENT_PERSONALITY_GROUPS.map((group) => ({
-    ...group,
-    personalities: group.personalities.filter((personality) => {
-      const meta = getOpponentPersonalityMeta(personality);
-      const searchText = `${personality} ${meta.label} ${meta.description}`.toLowerCase();
-
-      return (
-        normalizedPersonalityQuery === "" ||
-        searchText.includes(normalizedPersonalityQuery)
-      );
-    }),
-  })).filter((group) => group.personalities.length > 0);
-
   useEffect(() => {
     router.prefetch("/debate");
   }, [router]);
@@ -192,500 +138,87 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen px-6 py-10 sm:px-8">
-      <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="theme-card flex flex-col justify-between rounded-[2rem] border p-8 backdrop-blur md:p-10">
-          <div>
-            <p className="theme-kicker mb-4 text-sm font-medium uppercase tracking-[0.35em]">
-              Private Debate Rooms
-            </p>
-            <h1 className="max-w-3xl text-5xl font-semibold leading-tight text-balance md:text-7xl">
-              Enter the room already sharpened.
-            </h1>
-            <p className="theme-copy mt-6 max-w-2xl text-lg leading-8">
-              Choose the motion, choose the side, and step into a private sparring room built
-              for hard pressure, fast rebuttals, and premium post-round analysis.
-            </p>
-          </div>
+    <main className="compact-home px-6 py-10 sm:py-16">
+      <div className="mx-auto max-w-3xl">
+        <header className="mb-10">
+          <h1 className="max-w-2xl text-4xl font-semibold leading-tight sm:text-6xl">
+            Does your argument survive pressure?
+          </h1>
+          <p className="theme-copy mt-4 text-lg">Take a side. Make your case. Find out what holds up.</p>
+        </header>
 
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            <div className="theme-surface rounded-3xl border p-5">
-              <p className="theme-muted text-sm uppercase tracking-[0.2em]">
-                Curated Setup
-              </p>
-              <p className="mt-3 text-xl font-medium">
-                Open a room from a starter motion or write the exact claim you want to test.
-              </p>
-            </div>
-            <div className="theme-surface rounded-3xl border p-5">
-              <p className="theme-muted text-sm uppercase tracking-[0.2em]">
-                High Pressure
-              </p>
-              <p className="mt-3 text-xl font-medium">
-                The opposition presses weak evidence, loose logic, and lazy tradeoffs immediately.
-              </p>
-            </div>
-            <div className="theme-surface rounded-3xl border p-5">
-              <p className="theme-muted text-sm uppercase tracking-[0.2em]">
-                Judge&apos;s Brief
-              </p>
-              <p className="mt-3 text-xl font-medium">
-                Finish the round and leave with premium notes, exact weaknesses, and the replay line that matters.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="theme-panel rounded-[2rem] border p-8 md:p-10">
-          <p className="theme-kicker text-sm font-medium uppercase tracking-[0.35em]">
-            Open A Room
-          </p>
-          <h2 className="mt-4 text-3xl font-semibold">Build your matchup.</h2>
-
-          <div className="mt-8">
-            <label htmlFor="topic" className="theme-copy mb-3 block text-sm font-medium">
-              Debate topic
-            </label>
-            <textarea
-              id="topic"
-              rows={4}
-              className="theme-input w-full rounded-3xl border px-5 py-4 text-lg outline-none transition"
-              placeholder={DEFAULT_TOPIC}
-              value={topic}
-              onChange={(event) => setTopic(event.target.value)}
-            />
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            {STARTER_TOPICS.map((starterTopic) => (
-              <button
-                key={starterTopic}
-                type="button"
-                onClick={() => setTopic(starterTopic)}
-                className="theme-button-secondary rounded-full border px-4 py-2 text-sm transition"
-              >
-                {starterTopic}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-8">
-            <p className="theme-copy mb-3 text-sm font-medium">Your side</p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {SIDE_CHOICES.map((choice) => {
-                const isActive = sideChoice === choice;
-
-                return (
-                  <button
-                    key={choice}
-                    type="button"
-                    onClick={() => setSideChoice(choice)}
-                    className={`rounded-3xl border px-4 py-4 text-left transition ${
-                      isActive
-                        ? "theme-option-active"
-                        : "theme-option"
-                    }`}
-                  >
-                    <span className="block text-lg font-semibold">{choice}</span>
-                    <span className="theme-option-copy mt-1 block text-sm">
-                      {sideCopy[choice]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="theme-copy mb-3 text-sm font-medium">
-                  Opponent personality
-                </p>
-                <p className="theme-muted text-sm">
-                  Pick from a much larger roster of public-figure-inspired debate modes without changing the side.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <label htmlFor="personality-search" className="sr-only">
-                Search personalities
-              </label>
-              <input
-                id="personality-search"
-                type="text"
-                value={personalityQuery}
-                onChange={(event) => setPersonalityQuery(event.target.value)}
-                placeholder="Search personalities, styles, or labels..."
-                className="theme-input w-full rounded-2xl border px-4 py-3 text-sm outline-none transition"
-              />
-            </div>
-
-            <div className="mt-4 max-h-[32rem] space-y-5 overflow-y-auto pr-2">
-              {visiblePersonalityGroups.length === 0 ? (
-                <div className="theme-surface rounded-3xl border px-4 py-5">
-                  <p className="text-base font-semibold">
-                    No personality matches that search.
-                  </p>
-                  <p className="theme-muted mt-2 text-sm">
-                    Try a name like AOC, Obama, Fuentes, Reagan, or Hitchens.
-                  </p>
-                </div>
-              ) : (
-                visiblePersonalityGroups.map((group) => (
-                  <section key={group.id}>
-                    <p className="theme-kicker mb-3 text-xs uppercase tracking-[0.28em]">
-                      {group.label}
-                    </p>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {group.personalities.map((personality) => {
-                        const meta = getOpponentPersonalityMeta(personality);
-                        const isActive = opponentPersonality === personality;
-
-                        return (
-                          <button
-                            key={personality}
-                            type="button"
-                            onClick={() => setOpponentPersonality(personality)}
-                            className={`rounded-3xl border px-4 py-4 text-left transition ${
-                              isActive ? "theme-option-active" : "theme-option"
-                            }`}
-                          >
-                            <span className="block text-lg font-semibold">
-                              {meta.label}
-                            </span>
-                            <span className="theme-option-copy mt-1 block text-sm leading-6">
-                              {meta.description}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="mt-8">
-            <p className="theme-copy mb-3 text-sm font-medium">Reply mode</p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {REPLY_STYLES.map((style) => {
-                const meta = getReplyStyleMeta(style);
-                const isActive = replyStyle === style;
-
-                return (
-                  <button
-                    key={style}
-                    type="button"
-                    onClick={() => setReplyStyle(style)}
-                    className={`rounded-3xl border px-4 py-4 text-left transition ${
-                      isActive ? "theme-option-active" : "theme-option"
-                    }`}
-                  >
-                    <span className="block text-lg font-semibold">
-                      {meta.label}
-                    </span>
-                    <span className="theme-option-copy mt-1 block text-sm leading-6">
-                      {meta.description}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="theme-surface mt-8 rounded-[1.8rem] border p-5">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div className="max-w-2xl">
-                <p className="theme-kicker text-xs uppercase tracking-[0.28em]">
-                  Private Coach
-                </p>
-                <h3 className="mt-3 text-2xl font-semibold">
-                  Live turn scoring and weak-point detection
-                </h3>
-                <p className="theme-copy mt-3 text-sm leading-6">
-                  Turn this on if you want every live draft scored, critiqued in one
-                  sentence, and paired with the cleanest place to hit the opponent after
-                  they answer.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setLiveFeedbackMode((current) => !current)}
-                className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${
-                  liveFeedbackMode ? "theme-option-active" : "theme-button-secondary"
-                }`}
-              >
-                {liveFeedbackMode ? "Private Coach on" : "Turn on Private Coach"}
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-4 lg:grid-cols-3">
-              <div className="theme-subcard rounded-[1.35rem] border p-4">
-                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                  After you type
-                </p>
-                <p className="theme-copy mt-2 text-sm leading-6">
-                  The app scores the turn live and gives one short coach critique.
-                </p>
-              </div>
-              <div className="theme-subcard rounded-[1.35rem] border p-4">
-                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                  After they answer
-                </p>
-                <p className="theme-copy mt-2 text-sm leading-6">
-                  You get a `hit here hardest` read on the opponent&apos;s latest point.
-                </p>
-              </div>
-              <div className="theme-subcard rounded-[1.35rem] border p-4">
-                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                  Best use
-                </p>
-                <p className="theme-copy mt-2 text-sm leading-6">
-                  Great for practice rounds when you want fast correction instead of only end-of-round feedback.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="theme-surface mt-8 rounded-[1.8rem] border p-5">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div className="max-w-2xl">
-                <p className="theme-kicker text-xs uppercase tracking-[0.28em]">
-                  Opponent scouting report
-                </p>
-                <h3 className="mt-3 text-2xl font-semibold">
-                  {selectedPersonalityMeta.label} in {selectedReplyStyleMeta.label} mode
-                </h3>
-                <p className="theme-copy mt-3 text-sm leading-6">
-                  {selectedReplyStyleMeta.description} Expect {selectedPersonalityMeta.label} to
-                  push with {selectedPersonalityMeta.description.toLowerCase()}
-                </p>
-              </div>
-              <span className="theme-pill rounded-full border px-4 py-2 text-sm">
-                Best prep: claim, warrant, impact
-              </span>
-            </div>
-
-            <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
-              <div className="theme-subcard rounded-[1.35rem] border p-4">
-                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                  Likely pressure points
-                </p>
-                <div className="mt-3 space-y-3">
-                  {selectedPersonalityMeta.followUps.slice(0, 3).map((item) => (
-                    <div key={item} className="report-list-item">
-                      <span className="report-list-dot bg-[var(--accent)]" />
-                      <span className="theme-copy text-sm leading-6">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="theme-subcard rounded-[1.35rem] border p-4">
-                <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                  What wins this matchup
-                </p>
-                <div className="mt-3 space-y-3">
-                  {selectedPersonalityMeta.argumentHabits.slice(0, 3).map((item) => (
-                    <div key={item} className="report-list-item">
-                      <span className="report-list-dot bg-emerald-400/80" />
-                      <span className="theme-copy text-sm leading-6">
-                        Beat this by directly answering: {item.charAt(0).toLowerCase()}
-                        {item.slice(1)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={launchDebate}
-            className="theme-button-primary mt-10 inline-flex w-full items-center justify-center rounded-full px-6 py-4 text-lg font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isPending ? "Preparing the room..." : "Enter the room"}
-          </button>
-
-          <p className="theme-muted mt-4 text-sm">
-            You can keep the topic blank if you want the default motion.
-          </p>
-        </section>
-      </div>
-
-      {recentRounds.length > 0 ? (
-        <section className="mx-auto mt-8 max-w-6xl">
-          <div className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
-            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-              <div>
-                <p className="theme-kicker text-xs uppercase tracking-[0.32em]">
-                  Private archive
-                </p>
-                <h2 className="mt-3 text-3xl font-semibold">Jump back into your best work</h2>
-              </div>
-              <p className="theme-copy max-w-2xl text-sm leading-6">
-                Recent rounds stay on this device so you can resume live debates, reopen reports,
-                and replay good matchups without rebuilding the setup.
-              </p>
-            </div>
-
-            <div className="mt-6 grid gap-4 xl:grid-cols-2">
-              {recentRounds.map((round) => {
-                const badgeClass =
-                  round.result === "win"
-                    ? "theme-status-anchor"
-                    : round.result === "loss"
-                      ? "theme-status-collapse"
-                      : round.result === "live"
-                        ? "theme-flag-low"
-                        : "theme-status-developing";
-                const badgeLabel =
-                  round.result === "live"
-                    ? "Live round"
-                    : round.result === "tie"
-                      ? "Tie"
-                      : round.result.toUpperCase();
-
-                return (
-                  <article
-                    key={round.sessionId}
-                    className="theme-surface rounded-[1.6rem] border p-5"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="max-w-2xl">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] ${badgeClass}`}
-                          >
-                            {badgeLabel}
-                          </span>
-                          {round.active ? (
-                            <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.16em]">
-                              Current session
-                            </span>
-                          ) : null}
-                          {round.liveFeedbackMode ? (
-                            <span className="theme-pill rounded-full border px-3 py-1 text-[0.68rem] uppercase tracking-[0.16em]">
-                              Private Coach
-                            </span>
-                          ) : null}
-                        </div>
-                        <h3 className="mt-3 text-2xl font-semibold">{round.topic}</h3>
-                        <p className="theme-copy mt-3 text-sm leading-6">
-                          {round.persona} in {round.mode} mode. {round.turns} user turn
-                          {round.turns === 1 ? "" : "s"} logged. Updated{" "}
-                          {formatRelativeTime(round.updatedAt)}.
-                        </p>
-                      </div>
-
-                      <div className="text-right">
-                        <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                          Score
-                        </p>
-                        <p className="mt-2 text-3xl font-semibold">
-                          {round.score ?? "--"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="theme-subcard mt-5 rounded-[1.3rem] border p-4">
-                      <p className="theme-muted text-xs uppercase tracking-[0.22em]">
-                        Saved room brief
-                      </p>
-                      <p className="theme-copy mt-2 text-sm leading-6">
-                        {round.analysisSummary ??
-                          "No full report saved yet. Resume the round or open it to generate feedback."}
-                      </p>
-                    </div>
-
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      <Link
-                        href={`/debate?session=${round.sessionId}`}
-                        className="theme-button-secondary inline-flex rounded-full border px-4 py-2 text-sm font-medium transition"
-                      >
-                        Re-enter room
-                      </Link>
-                      <Link
-                        href={`/results?session=${round.sessionId}`}
-                        className="theme-button-primary inline-flex rounded-full px-4 py-2 text-sm font-semibold transition"
-                      >
-                        Open brief
-                      </Link>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <section className="mx-auto mt-8 max-w-6xl">
-        <div className="grid gap-8 lg:grid-cols-[1.04fr_0.96fr]">
-          <div className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
-            <p className="theme-kicker text-xs uppercase tracking-[0.32em]">Explore Counterpoint</p>
-            <h2 className="mt-3 text-3xl font-semibold">
-              More than a single landing page now.
-            </h2>
-            <p className="theme-copy mt-4 max-w-2xl text-sm leading-7">
-              If someone lands here and wants more context, there are now proper pages for the
-              story, the workflow, and the kind of people this product is built for.
-            </p>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {EXPLORE_PAGES.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="theme-surface rounded-[1.5rem] border p-5 transition hover:-translate-y-0.5"
-                >
-                  <p className="text-lg font-semibold">{item.label}</p>
-                  <p className="theme-copy mt-3 text-sm leading-7">{item.description}</p>
-                </Link>
+        <section id="room-setup" className="theme-card rounded-xl border p-5 sm:p-7">
+          <label htmlFor="topic" className="mb-3 block text-sm font-semibold">Your topic</label>
+          <textarea id="topic" rows={2} value={topic}
+            onChange={(event) => setTopic(event.target.value)}
+            className="theme-input w-full rounded-lg border p-4 text-lg"
+            placeholder={DEFAULT_TOPIC} />
+          <details className="mt-3">
+            <summary className="theme-muted cursor-pointer text-sm">Need a topic?</summary>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {STARTER_TOPICS.map((item) => (
+                <button key={item} type="button" onClick={() => setTopic(item)}
+                  className="theme-button-secondary rounded-lg border px-3 py-2 text-sm">{item}</button>
               ))}
             </div>
-          </div>
-
-          <div className="grid gap-4">
-            <div className="theme-panel rounded-[2rem] border p-6 md:p-8">
-              <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Why It Exists</p>
-              <h2 className="mt-3 text-3xl font-semibold">Built for sharper rooms, not generic encouragement.</h2>
-              <div className="mt-6 space-y-3">
-                {ORIGIN_NOTES.slice(0, 2).map((item) => (
-                  <div key={item.title} className="theme-subcard rounded-[1.35rem] border p-4">
-                    <p className="text-sm font-semibold">{item.title}</p>
-                    <p className="theme-copy mt-2 text-sm leading-7">{item.body}</p>
-                  </div>
+          </details>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2">
+            <label className="text-sm font-semibold">Your side
+              <select value={sideChoice} onChange={(event) => setSideChoice(event.target.value as SideChoice)}
+                className="theme-input mt-2 block w-full rounded-lg border p-3">
+                {SIDE_CHOICES.map((side) => <option key={side} value={side}>{side === "Pro" ? "For" : side === "Con" ? "Against" : "Surprise me"}</option>)}
+              </select>
+            </label>
+            <label className="text-sm font-semibold">Opponent
+              <select value={opponentPersonality} onChange={(event) => setOpponentPersonality(event.target.value as OpponentPersonality)}
+                className="theme-input mt-2 block w-full rounded-lg border p-3">
+                {OPPONENT_PERSONALITY_GROUPS.map((group) => (
+                  <optgroup key={group.id} label={group.label}>
+                    {group.personalities.map((personality) => <option key={personality} value={personality}>{getOpponentPersonalityMeta(personality).label}</option>)}
+                  </optgroup>
                 ))}
-              </div>
-            </div>
-
-            <div className="theme-card rounded-[2rem] border p-6 backdrop-blur md:p-8">
-              <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Selected Praise</p>
-              <p className="mt-3 text-lg leading-8">
-                &ldquo;{SAMPLE_TESTIMONIALS[0].quote}&rdquo;
-              </p>
-              <p className="theme-copy mt-4 text-sm">
-                {SAMPLE_TESTIMONIALS[0].name}, {SAMPLE_TESTIMONIALS[0].role}
-              </p>
-
-              <div className="mt-6 grid gap-3">
-                {HOW_IT_WORKS_STEPS.slice(0, 2).map((item) => (
-                  <div key={item.title} className="theme-surface rounded-[1.25rem] border p-4">
-                    <p className="theme-muted text-xs uppercase tracking-[0.22em]">{item.title}</p>
-                    <p className="theme-copy mt-2 text-sm leading-7">{item.body}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+              </select>
+            </label>
           </div>
-        </div>
-      </section>
+          <details className="mt-5 border-t border-[var(--border)] pt-4">
+            <summary className="theme-copy cursor-pointer text-sm">Round options</summary>
+            <div className="mt-4 flex flex-wrap items-end gap-5">
+              <label className="text-sm">Reply length
+                <select value={replyStyle} onChange={(event) => setReplyStyle(event.target.value as ReplyStyle)}
+                  className="theme-input mt-2 block rounded-lg border p-3">
+                  {REPLY_STYLES.map((style) => <option key={style} value={style}>{getReplyStyleMeta(style).label}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 py-3 text-sm">
+                <input type="checkbox" checked={liveFeedbackMode} onChange={(event) => setLiveFeedbackMode(event.target.checked)} />
+                Live coach feedback
+              </label>
+            </div>
+          </details>
+          <button type="button" disabled={isPending} onClick={launchDebate}
+            className="theme-button-primary mt-6 w-full rounded-lg px-5 py-3 font-semibold disabled:opacity-60">
+            {isPending ? "Starting..." : "Start debate"}
+          </button>
+        </section>
+
+        {recentRounds.length > 0 && (
+          <details className="mt-8">
+            <summary className="theme-copy cursor-pointer text-sm">Recent rounds ({recentRounds.length})</summary>
+            <div className="mt-3 divide-y divide-[var(--border)]">
+              {recentRounds.map((round) => (
+                <article key={round.sessionId} className="flex flex-wrap items-center justify-between gap-3 py-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium break-words">{round.topic}</p>
+                    <p className="theme-muted mt-1 text-xs">{round.persona} · {formatRelativeTime(round.updatedAt)}</p>
+                  </div>
+                  <Link href={`/debate?session=${round.sessionId}`} className="text-sm underline underline-offset-4">Resume</Link>
+                  <Link href={`/results?session=${round.sessionId}`} className="text-sm underline underline-offset-4">Report</Link>
+                </article>
+              ))}
+            </div>
+          </details>
+        )}
+      </div>
     </main>
   );
 }

@@ -3,14 +3,14 @@ export const SITE_NAV_LINKS = [
   { href: "/about", label: "About" },
   { href: "/why-we-built-this", label: "Why We Built This" },
   { href: "/how-it-works", label: "How It Works" },
-  { href: "/testimonials", label: "Testimonials" },
+  { href: "/testimonials", label: "Signals" },
 ] as const;
 
 export const SITE_FOOTER_LINKS = [
   { href: "/about", label: "About Counterpoint" },
   { href: "/why-we-built-this", label: "Why we created this" },
   { href: "/how-it-works", label: "How it works" },
-  { href: "/testimonials", label: "Selected testimonials" },
+  { href: "/testimonials", label: "Signals from the room" },
 ] as const;
 
 export const SAMPLE_TESTIMONIALS = [

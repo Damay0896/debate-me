@@ -11,16 +11,16 @@ const FAVORITE_BITS = [
 ] as const;
 
 export const metadata: Metadata = {
-  title: "Testimonials | Counterpoint",
-  description: "Testimonials and the kind of users Counterpoint was designed to serve.",
+  title: "Signals | Counterpoint",
+  description: "The signals Counterpoint aims to earn from sharp users.",
 };
 
 export default function TestimonialsPage() {
   return (
     <SitePageShell
-      kicker="Testimonials"
-      title="The kind of praise we want to earn from people who actually care about arguing better."
-      description="These testimonials reflect the kinds of users Counterpoint was built for and the reasons the product clicks with people who care about arguing well."
+      kicker="Signals"
+      title="What sharp users tend to notice first when the room is doing its job."
+      description="These are the reactions Counterpoint is designed to earn from people who care about pressure, clarity, and getting better quickly."
       highlights={[
         { label: "Tone", value: "Discreet, sharp, and ambitious" },
         { label: "Most loved", value: "Specific reports and real pressure" },
@@ -34,11 +34,11 @@ export default function TestimonialsPage() {
       <section className="theme-card rounded-[2rem] border p-6 md:p-8">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Selected Praise</p>
+            <p className="theme-kicker text-xs uppercase tracking-[0.28em]">Signals from the room</p>
             <h2 className="mt-3 text-3xl font-semibold">What the right users notice almost immediately</h2>
           </div>
           <span className="theme-pill inline-flex rounded-full border px-4 py-2 text-sm">
-            Selected praise
+            Early reactions
           </span>
         </div>
 
