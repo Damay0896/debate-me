@@ -908,6 +908,7 @@ export default function DebateExperience({
     try {
       const response = await fetch("/api/debate", {
         method: "POST",
+        signal: AbortSignal.timeout(25000),
         headers: {
           "Content-Type": "application/json",
         },
@@ -1039,7 +1040,7 @@ export default function DebateExperience({
       <header className="debate-heading">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold leading-snug sm:text-2xl">{session.topic}</h1>
-          <p className="theme-muted mt-2 text-sm">You: {session.userSide} · {opponentPersonality.label} · {replyStyle.label} · {userTurns} turns</p>
+          <p className="theme-muted mt-2 text-sm">You: {session.userSide} · {opponentPersonality.label} · {replyStyle.label} · {userTurns} {userTurns === 1 ? "turn" : "turns"}</p>
         </div>
         <button type="button" disabled={isRouting || isThinking || userTurns === 0} onClick={openResults}
           className="theme-button-secondary shrink-0 rounded-lg border px-4 py-2 text-sm disabled:opacity-40">Finish round</button>
@@ -1082,10 +1083,11 @@ export default function DebateExperience({
             {error && <p role="alert" className="theme-error mt-2 text-sm">{error}</p>}
           </div>
         </section>
-        {activeTool && <aside id="debate-tools" className="debate-tools" aria-label="Debate tools">
+        {activeTool && <aside id="debate-tools" className="debate-tools" aria-label="Debate tools"
+          onKeyDown={(event) => { if (event.key === "Escape") { setActiveTool(null); document.getElementById("argument")?.focus(); } }}>
           <div className="mb-5 flex items-center justify-between">
             <h2 className="font-semibold">{activeTool === "coach" ? "Coach notes" : activeTool === "evidence" ? "Evidence" : "Draft check"}</h2>
-            <button type="button" onClick={() => setActiveTool(null)} className="theme-muted text-sm">Close</button>
+            <button type="button" onClick={() => { setActiveTool(null); document.getElementById("argument")?.focus(); }} className="theme-muted text-sm">Close</button>
           </div>
           {activeTool === "coach" && <>
             {turnFeedback ? <>

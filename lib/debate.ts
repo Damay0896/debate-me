@@ -2753,10 +2753,7 @@ function buildOpeningOpponentMessage(input: {
   opponentPersonality: OpponentPersonality;
   replyStyle: ReplyStyle;
 }) {
-  const personality = getOpponentPersonalityMeta(input.opponentPersonality);
-  const replyStyle = getReplyStyleMeta(input.replyStyle);
-
-  return `${personality.opening} ${replyStyle.opening} You are defending the ${input.userSide.toLowerCase()} side of "${input.topic}" and I am arguing the ${input.opponentSide.toLowerCase()} side. Start with your strongest claim, and make it specific enough to defend under pressure.`;
+  return `You are arguing ${input.userSide === "Pro" ? "for" : "against"} "${input.topic}". I'll take the other side. What's your strongest reason?`;
 }
 
 export function buildDebateSystemPrompt(session: DebateSession) {

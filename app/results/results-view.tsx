@@ -441,8 +441,8 @@ export default function ResultsView({ initialSessionId }: ResultsViewProps) {
           </div>
         </section>
         <div className="theme-muted flex flex-wrap gap-x-6 gap-y-2 text-sm">
-          <span>{turnStatValue} {turnStatLabel.toLowerCase()}</span>
-          <span>{wordStatValue} {wordStatLabel.toLowerCase()}</span>
+          <span>{turnStatLabel}: {turnStatValue}</span>
+          <span>{wordStatLabel}: {wordStatValue}</span>
           <span>Best skill: {topSkillValue}</span>
         </div>
         {isLoading && <p role="status" className="theme-muted text-sm">Updating analysis...</p>}

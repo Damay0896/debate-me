@@ -927,6 +927,12 @@ html[data-theme="light"] .theme-accent-chip {
 .debate-composer { flex-shrink: 0; padding-top: 12px; border-top: 1px solid var(--border); }
 .debate-composer textarea { resize: vertical; max-height: 180px; }
 .debate-tools { min-width: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 16px; border-left: 1px solid var(--border); background: var(--background); }
+button:focus-visible, a:focus-visible, summary:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 3px;
+}
+.debate-toolbar button, .debate-tools button { min-height: 40px; }
+.debate-composer > button { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 body:has(.debate-workspace) footer { display: none; }
 .report-verdict-line { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 28px; padding: 24px 0; border-block: 1px solid var(--border); }
 .report-takeaways article { display: grid; grid-template-columns: 145px minmax(0, 1fr); gap: 24px; padding: 20px 0; border-bottom: 1px solid var(--border); }

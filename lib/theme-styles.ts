@@ -210,8 +210,8 @@ svg text {
 }
 
 .theme-button-primary {
-  background: var(--accent-surface);
-  box-shadow: 0 16px 40px var(--accent-shadow);
+  background: var(--accent-strong);
+  box-shadow: none;
   color: var(--accent-ink);
 }
 

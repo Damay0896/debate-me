@@ -134,27 +134,14 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="theme-toggle inline-flex items-center gap-3 rounded-full border px-4 py-3 backdrop-blur-xl"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-[var(--border)]"
       aria-label={
         mounted
           ? `Switch to ${theme === "dark" ? "light" : "dark"} mode`
           : "Toggle theme"
       }
     >
-      <span className="theme-toggle-icon flex h-9 w-9 items-center justify-center rounded-full border">
-        <span className="theme-accent">
-          {mounted && theme === "light" ? <SunIcon /> : <MoonIcon />}
-        </span>
-      </span>
-
-      <span className="flex flex-col items-start leading-none">
-        <span className="theme-muted text-[11px] uppercase tracking-[0.28em]">
-          Theme
-        </span>
-        <span className="mt-1 text-sm font-semibold">
-          {mounted ? (theme === "dark" ? "Dark" : "Light") : "Theme"}
-        </span>
-      </span>
+      {mounted && theme === "light" ? <SunIcon /> : <MoonIcon />}
     </button>
   );
 }
